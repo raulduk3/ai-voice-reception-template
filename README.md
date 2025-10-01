@@ -1,5 +1,5 @@
 # AI Voice Receptionist Template
-[![GitHub release](https://img.shields.io/github/v/release/raulduk3/layer7-ai-voice)](https://github.com/raulduk3/layer7-ai-voice/releases/latest)
+[![GitHub release](https://img.shields.io/github/v/release/raulduk3/ai-voice-reception-template)](https://github.com/raulduk3/layer7-ai-voice/releases/latest)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/raulduk3/ai-voice-reception-template/build-deploy.yml)](https://github.com/raulduk3/ai-voice-reception-template/actions/workflows/build-deploy.yml)
 ![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-yellow.svg)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
