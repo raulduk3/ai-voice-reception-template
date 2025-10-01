@@ -4,6 +4,8 @@
 .env.production
 .env.staging
 
+**/secrets/**
+
 # API Keys and tokens
 config/
 credentials/
@@ -50,4 +52,4 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp
+*.tempnode_modules/
