@@ -8,33 +8,6 @@
 
 Professional AI voice receptionist template with intelligent templating system, PII protection, and seamless Retell.ai + n8n integration. Template-first approach: clone once, customize for unlimited clients.
 
-## Table of Contents
-
-### Getting Started
-- [Quick Start for New Clients](#-quick-start-for-new-clients)
-- [Template Architecture](#️-template-architecture)
-- [Client Configuration Guide](#-client-configuration-guide)
-
-### Development & Extension
-- [GitHub Copilot Integration](#-github-copilot-integration)
-- [Advanced Template Features](#-advanced-template-features)
-- [Real-World Client Examples](#-real-world-client-examples)
-
-### Deployment & Operations
-- [Deployment Guide](#-deployment-guide)
-- [Available Commands](#️-available-commands)
-- [Release Management](#-release-management)
-
-### Security & Architecture  
-- [Security Features](#️-security-features)
-- [Architecture Deep Dive](#-architecture-deep-dive)
-- [Development Guide](#️-development)
-
-### Support & Troubleshooting
-- [Troubleshooting Guide](#-troubleshooting-guide)
-- [Resources & Links](#-resources--links)
-
-
 ## Quick Start
 
 ```bash
