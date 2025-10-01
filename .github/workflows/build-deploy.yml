@@ -32,6 +32,15 @@ jobs:
     - name: Build optimized files
       run: npm run build
       
+    - name: Display version info
+      run: |
+        VERSION=$(node -p "require('./package.json').version")
+        echo "🏷️ Building version: v${VERSION}"
+        echo "## 📋 Build Information" >> $GITHUB_STEP_SUMMARY
+        echo "- **Template Version**: v${VERSION}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Branch/Ref**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+      
     - name: Display build info
       run: |
         echo "## 📊 Build Summary" >> $GITHUB_STEP_SUMMARY
@@ -119,14 +128,29 @@ jobs:
         echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Current Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package Version**: ${{ steps.version.outputs.package_version }}" >> $GITHUB_STEP_SUMMARY
+          
           if [ "${{ steps.tag_check.outputs.tag_exists }}" == "false" ]; then
-            echo "- **Release**: 🎉 Created new release ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Action**: 🎉 Created new release ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Download**: [Latest Release](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "- **Release**: ⏭️ Skipped (version ${{ steps.version.outputs.version }} already exists)" >> $GITHUB_STEP_SUMMARY
-            echo "- **Download**: [All Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "💡 **To create a new release**: Run \`npm run release:patch\`, \`npm run release:minor\`, or \`npm run release:major\`" >> $GITHUB_STEP_SUMMARY
+            echo "- **Release Action**: ⏭️ Skipped (version ${{ steps.version.outputs.version }} already exists)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Existing Releases**: [View All Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
           fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Build Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat dist/build-info.json >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### � Version Management" >> $GITHUB_STEP_SUMMARY
+          echo "To create a new release:" >> $GITHUB_STEP_SUMMARY
+          echo "- \`npm run release:patch\` - Bug fixes ($(echo ${{ steps.version.outputs.package_version }} | awk -F. '{print $1"."$2"."$3+1}'))" >> $GITHUB_STEP_SUMMARY
+          echo "- \`npm run release:minor\` - New features ($(echo ${{ steps.version.outputs.package_version }} | awk -F. '{print $1"."$2+1".0"}'))" >> $GITHUB_STEP_SUMMARY  
+          echo "- \`npm run release:major\` - Breaking changes ($(echo ${{ steps.version.outputs.package_version }} | awk -F. '{print $1+1".0.0"}'))" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Note**: Releases are only created from the main branch" >> $GITHUB_STEP_SUMMARY
         fi  
