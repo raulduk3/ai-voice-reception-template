@@ -423,10 +423,6 @@ Contributions to improve the base template are welcome:
 - **Wiki**: [Project Wiki](https://github.com/raulduk3/layer7-ai-voice/wiki)
 
 
-## 📄 License
-
-ISC License - See repository for details.
-
 ## 🏷️ Version History
 
 See [Releases](https://github.com/raulduk3/layer7-ai-voice/releases) for detailed changelog and version history.
