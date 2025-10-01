@@ -1,13 +1,39 @@
 # Layer 7 AI Voice Receptionist Template
-
-[![GitHub release](https://img.shields.io/github/v/release/raulduk3/layer7-ai-voice)](https://github.com/raulduk3/layer7-ai-voice/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/raulduk3/layer7-ai-voice/build.yml)](https://github.com/raulduk3/layer7-ai-voice/actions)
+[![GitHub release](https://img.shields.io/github/v/release/raulduk3/layer7-ai-voice)](https://github.com/raulduk3/layer7-ai-voice/releases/latest)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/raulduk3/layer7-ai-voice/build.yml)](https://github.com/raulduk3/layer7-ai-voice/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
 [![Retell.ai](https://img.shields.io/badge/Retell.ai-Compatible-blue)](https://retell.ai/)
 [![n8n](https://img.shields.io/badge/n8n-Workflows-orange)](https://n8n.io/)
 
 Professional AI voice receptionist template with intelligent templating system, PII protection, and seamless Retell.ai + n8n integration. Template-first approach: clone once, customize for unlimited clients.
+
+## Table of Contents
+
+### Getting Started
+- [Quick Start for New Clients](#-quick-start-for-new-clients)
+- [Template Architecture](#️-template-architecture)
+- [Client Configuration Guide](#-client-configuration-guide)
+
+### Development & Extension
+- [GitHub Copilot Integration](#-github-copilot-integration)
+- [Advanced Template Features](#-advanced-template-features)
+- [Real-World Client Examples](#-real-world-client-examples)
+
+### Deployment & Operations
+- [Deployment Guide](#-deployment-guide)
+- [Available Commands](#️-available-commands)
+- [Release Management](#-release-management)
+
+### Security & Architecture  
+- [Security Features](#️-security-features)
+- [Architecture Deep Dive](#-architecture-deep-dive)
+- [Development Guide](#️-development)
+
+### Support & Troubleshooting
+- [Troubleshooting Guide](#-troubleshooting-guide)
+- [Resources & Links](#-resources--links)
+
 
 ## Quick Start
 
@@ -113,7 +139,3 @@ npm run release   # Create GitHub release
 - [Retell.ai Documentation](https://docs.retell.ai)
 - [n8n Documentation](https://docs.n8n.io)
 - [GitHub Copilot Prompts](.github/copilot-prompts/)
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
