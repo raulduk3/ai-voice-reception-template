@@ -129,7 +129,9 @@ class LayerBuilder {
                     const isExcluded = [
                         'package-lock.json',
                         'build.js',
-                        '.DS_Store'
+                        '.DS_Store',
+                        'README.md',
+                        "package.json"
                     ].includes(entry.name) || entry.name.startsWith('.');
                     
                     if ((isProcessable || isImportant) && !isExcluded) {
