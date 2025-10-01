@@ -83,36 +83,65 @@ jobs:
             echo "tag_exists=false" >> $GITHUB_OUTPUT
           fi
 
+      - name: Extract build info for release
+        if: github.ref == 'refs/heads/main' && steps.tag_check.outputs.tag_exists == 'false'
+        id: build_info
+        run: |
+          BUILD_STATS=$(cat dist/build-info.json)
+          TOTAL_FILES=$(echo $BUILD_STATS | jq -r '.stats.totalFiles')
+          ORIGINAL_SIZE=$(echo $BUILD_STATS | jq -r '.stats.originalSize')
+          PROCESSED_SIZE=$(echo $BUILD_STATS | jq -r '.stats.processedSize')
+          SIZE_REDUCTION=$(echo $BUILD_STATS | jq -r '.stats.totalReduction')
+          BUILD_TIME=$(echo $BUILD_STATS | jq -r '.stats.processingTime')
+          BUILD_DATE=$(echo $BUILD_STATS | jq -r '.buildTime')
+          
+          echo "total_files=$TOTAL_FILES" >> $GITHUB_OUTPUT
+          echo "original_size=$ORIGINAL_SIZE" >> $GITHUB_OUTPUT
+          echo "processed_size=$PROCESSED_SIZE" >> $GITHUB_OUTPUT
+          echo "size_reduction=$SIZE_REDUCTION" >> $GITHUB_OUTPUT
+          echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
+          echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
+
       - name: Create GitHub Release
         if: github.ref == 'refs/heads/main' && steps.tag_check.outputs.tag_exists == 'false'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          name: "Layer 7 AI Voice Template v${{ steps.version.outputs.package_version }}"
+          name: "AI Voice Template v${{ steps.version.outputs.package_version }} (${{ steps.build_info.outputs.size_reduction }} size reduction)"
           body: |
-            ## 🤖 Layer 7 AI Voice Receptionist Template - v${{ steps.version.outputs.package_version }}
+            # 🤖 Layer 7 AI Voice Receptionist Template v${{ steps.version.outputs.package_version }}
+            
+            **Build Statistics:**
+            - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
+            - 📦 **Size Reduction**: ${{ steps.build_info.outputs.size_reduction }} (${{ steps.build_info.outputs.original_size }} → ${{ steps.build_info.outputs.processed_size }})
+            - ⚡ **Build Time**: ${{ steps.build_info.outputs.build_time }}
+            - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
+            - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
 
-            **Release Information:**
-            - Version: ${{ steps.version.outputs.package_version }}
-            - Commit: ${{ github.sha }}
-            - Build Date: ${{ github.run_id }}
-            - Files optimized with 30-40% size reduction
+            ## 🚀 What's New
+            
+            This optimized template includes:
+            - **Retell.ai Agent**: Complete conversation flow configuration
+            - **Security Prompts**: PII-protected system instructions  
+            - **n8n Workflows**: Full automation suite (booking, Q&A, lead capture)
+            - **Template System**: Dynamic variable replacement for client customization
+            - **GitHub Copilot**: Custom slash commands for development
 
-            **What's Included:**
-            - `Layer 7 AI Voice Receptionist (POC) - Retell Agent.json` - Complete agent configuration
-            - `prompts/Core Prompt.md` - Agent system instructions with template variables
-            - `prompts/RAG Agent Prompt - answerQuestion.md` - Secure RAG system prompt
-            - `n8n/*.json` - Complete N8N workflow automation suite
-            - `build-info.json` - Detailed build statistics and optimization metrics
+            ## 📥 Quick Start
 
-            **Usage:**
-            1. Fork this repository for your client
-            2. Download and extract the optimized files
-            3. Customize template variables ({{agent_name}}, {{business_name}}, etc.)
-            4. Upload configurations to Retell AI and N8N platforms
+            ```bash
+            # Download and extract
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/layer7-ai-voice-optimized.tar.gz
+            tar -xzf layer7-ai-voice-optimized.tar.gz
+            
+            # Customize for your client
+            # Edit template variables in JSON files
+            # Deploy to Retell.ai and n8n platforms
+            ```
 
-            **Template Variables to Customize:**
-            - `{{agent_name}}` - AI agent name
+            ## 🔧 Template Variables
+
+            Customize these in your deployment:
             - `{{business_name}}` - Client business name
             - `{{ai_support_hours}}` - Support availability hours
             - N8N webhook URLs for your instance
@@ -123,7 +152,7 @@ jobs:
 
       - name: Build Status Summary
         run: |
-          echo "## 🚀 Layer 7 AI Voice Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 AI Voice Build Complete" >> $GITHUB_STEP_SUMMARY
           echo "- **Build Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
