@@ -1,5 +1,4 @@
 # Layer 7 AI Voice Receptionist Template
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
 [![Retell.ai](https://img.shields.io/badge/Retell.ai-Compatible-blue)](https://retell.ai/)
 [![n8n](https://img.shields.io/badge/n8n-Workflows-orange)](https://n8n.io/)
