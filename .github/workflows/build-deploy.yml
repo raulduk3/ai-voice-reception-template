@@ -1,4 +1,4 @@
-name: Build and Serve Layer 7 AI Voice
+name: Build and Release Layer 7 AI Voice
 
 on:
   push:
@@ -11,18 +11,12 @@ env:
   NODE_VERSION: '18'
 
 jobs:
-  build-and-deploy:
+  build-and-release:
     runs-on: ubuntu-latest
     
     permissions:
-      pages: write
-      id-token: write
-      contents: read
-    
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
+      contents: write
+      
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -52,21 +46,49 @@ jobs:
         path: dist/
         retention-days: 30
         
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
+    - name: Create release archive
       if: github.ref == 'refs/heads/main'
-      
-    - name: Upload to GitHub Pages
-      uses: actions/upload-pages-artifact@v3
-      if: github.ref == 'refs/heads/main'
-      with:
-        path: dist/
+      run: |
+        cd dist
+        tar -czf ../layer7-ai-voice-optimized.tar.gz *
+        cd ..
         
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+    - name: Generate release tag
       if: github.ref == 'refs/heads/main'
-      
+      id: tag
+      run: |
+        BUILD_TIME=$(date -u '+%Y%m%d-%H%M%S')
+        TAG="v1.0.${BUILD_TIME}"
+        echo "tag=${TAG}" >> $GITHUB_OUTPUT
+        echo "Generated tag: ${TAG}"
+        
+    - name: Create GitHub Release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: "Layer 7 AI Voice - ${{ steps.tag.outputs.tag }}"
+        body: |
+          ## 🤖 Layer 7 AI Voice Receptionist - Optimized Build
+          
+          **Build Information:**
+          - Commit: ${{ github.sha }}
+          - Build Date: ${{ steps.tag.outputs.tag }}
+          - Files optimized with 30-40% size reduction
+          
+          **Contents:**
+          - `Layer 7 AI Voice Receptionist (POC) - Retell Agent.json` - Main agent configuration
+          - `Core Prompt.md` - Agent instructions template
+          - `RAG Agent Prompt - answerQuestion.md` - Secure RAG system prompt
+          - `n8n/` - Complete n8n workflow collection
+          - `build-info.json` - Detailed build statistics
+          
+          **Download the optimized files and use them in your AI voice receptionist setup.**
+        files: |
+          layer7-ai-voice-optimized.tar.gz
+        draft: false
+        prerelease: false
+        
     - name: Build Status Summary
       run: |
         echo "## 🚀 Layer 7 AI Voice Build Complete" >> $GITHUB_STEP_SUMMARY
@@ -74,5 +96,6 @@ jobs:
         echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          echo "- **Dist Files**: https://${{ github.repository_owner }}.github.io/layer7-ai-voice/" >> $GITHUB_STEP_SUMMARY
-        fi
+          echo "- **Release**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Download**: Check [Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
+        fi  
