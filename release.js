@@ -87,7 +87,7 @@ function main() {
     execCommand('npm run build', 'Rebuilding with new version');
 
     // Commit version bump
-    execCommand(`git add package.json dist/build-info.json`, 'Staging version files');
+    execCommand(`git add .`, 'Staging version files');
     execCommand(`git commit -m "chore: bump version to ${newVersion}"`, 'Committing version bump');
 
     // Create and push tag
