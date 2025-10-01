@@ -68,14 +68,14 @@
   "connections": {
     "Webhook In": {
       "main": [
-        [{"node": "Append Row to Google Sheet","type": "main","index": 0}]
+        [{ "node": "Append Row to Google Sheet", "type": "main", "index": 0 }]
       ]
     },
     "Append Row to Google Sheet": {
       "main": [
-        [{"node": "Format Success","type": "main","index": 0}],
-        [{"node": "Failure Handler","type": "main","index": 0}],
-        [{"node": "Error Handler","type": "error","index": 0}]
+        [{ "node": "Format Success", "type": "main", "index": 0 }],
+        [{ "node": "Failure Handler", "type": "main", "index": 0 }],
+        [{ "node": "Error Handler", "type": "error", "index": 0 }]
       ]
     }
   }
