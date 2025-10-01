@@ -53,37 +53,60 @@ jobs:
         tar -czf ../layer7-ai-voice-optimized.tar.gz *
         cd ..
         
-    - name: Generate release tag
+    - name: Get version from package.json
       if: github.ref == 'refs/heads/main'
-      id: tag
+      id: version
       run: |
-        BUILD_TIME=$(date -u '+%Y%m%d-%H%M%S')
-        TAG="v1.0.${BUILD_TIME}"
-        echo "tag=${TAG}" >> $GITHUB_OUTPUT
-        echo "Generated tag: ${TAG}"
+        VERSION=$(node -p "require('./package.json').version")
+        echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+        echo "package_version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Current version: v${VERSION}"
+        
+    - name: Check if tag exists
+      if: github.ref == 'refs/heads/main'
+      id: tag_check
+      run: |
+        if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.version.outputs.version }}$"; then
+          echo "Tag ${{ steps.version.outputs.version }} already exists"
+          echo "tag_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "Tag ${{ steps.version.outputs.version }} does not exist"
+          echo "tag_exists=false" >> $GITHUB_OUTPUT
+        fi
         
     - name: Create GitHub Release
-      if: github.ref == 'refs/heads/main'
+      if: github.ref == 'refs/heads/main' && steps.tag_check.outputs.tag_exists == 'false'
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ steps.tag.outputs.tag }}
-        name: "Layer 7 AI Voice - ${{ steps.tag.outputs.tag }}"
+        tag_name: ${{ steps.version.outputs.version }}
+        name: "Layer 7 AI Voice Template v${{ steps.version.outputs.package_version }}"
         body: |
-          ## 🤖 Layer 7 AI Voice Receptionist - Optimized Build
+          ## 🤖 Layer 7 AI Voice Receptionist Template - v${{ steps.version.outputs.package_version }}
           
-          **Build Information:**
+          **Release Information:**
+          - Version: ${{ steps.version.outputs.package_version }}
           - Commit: ${{ github.sha }}
-          - Build Date: ${{ steps.tag.outputs.tag }}
+          - Build Date: ${{ github.run_id }}
           - Files optimized with 30-40% size reduction
           
-          **Contents:**
-          - `Layer 7 AI Voice Receptionist (POC) - Retell Agent.json` - Main agent configuration
-          - `Core Prompt.md` - Agent instructions template
-          - `RAG Agent Prompt - answerQuestion.md` - Secure RAG system prompt
-          - `n8n/` - Complete n8n workflow collection
-          - `build-info.json` - Detailed build statistics
+          **What's Included:**
+          - `Layer 7 AI Voice Receptionist (POC) - Retell Agent.json` - Complete agent configuration
+          - `prompts/Core Prompt.md` - Agent system instructions with template variables
+          - `prompts/RAG Agent Prompt - answerQuestion.md` - Secure RAG system prompt
+          - `n8n/*.json` - Complete N8N workflow automation suite
+          - `build-info.json` - Detailed build statistics and optimization metrics
           
-          **Download the optimized files and use them in your AI voice receptionist setup.**
+          **Usage:**
+          1. Fork this repository for your client
+          2. Download and extract the optimized files
+          3. Customize template variables ({{agent_name}}, {{business_name}}, etc.)
+          4. Upload configurations to Retell AI and N8N platforms
+          
+          **Template Variables to Customize:**
+          - `{{agent_name}}` - AI agent name
+          - `{{business_name}}` - Client business name
+          - `{{ai_support_hours}}` - Support availability hours
+          - N8N webhook URLs for your instance
         files: |
           layer7-ai-voice-optimized.tar.gz
         draft: false
@@ -92,10 +115,18 @@ jobs:
     - name: Build Status Summary
       run: |
         echo "## 🚀 Layer 7 AI Voice Build Complete" >> $GITHUB_STEP_SUMMARY
-        echo "- **Build Status**: Success" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          echo "- **Release**: ${{ steps.tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Download**: Check [Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.tag_check.outputs.tag_exists }}" == "false" ]; then
+            echo "- **Release**: 🎉 Created new release ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Download**: [Latest Release](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Release**: ⏭️ Skipped (version ${{ steps.version.outputs.version }} already exists)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Download**: [All Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "💡 **To create a new release**: Run \`npm run release:patch\`, \`npm run release:minor\`, or \`npm run release:major\`" >> $GITHUB_STEP_SUMMARY
+          fi
         fi  
