@@ -47,7 +47,8 @@ The build system updates these specific build-time configuration fields:
 
 ### Infrastructure & Deployment
 
-- `tools[].url` - All webhook URLs for n8n integration endpoints
+- `transfer_phone_number` - Phone number for human transfer in agent nodes
+- `tools[].url` - All webhook URLs for n8n integration endpoints (see Webhook Configuration)
 - `transfer_destination.number` - Phone number for human handoff
 
 ### Voice & Call Settings
@@ -121,6 +122,54 @@ Generated files in `dist/` folder will have:
   }
 }
 ```
+
+## Webhook Configuration
+
+The system supports individual webhook URL configuration for each tool action. This allows you to use different n8n workflows or endpoints for different functions.
+
+### Configuration Structure
+
+```json
+{
+  "webhooks": {
+    "base_url": "https://your-n8n-instance.com/webhook",
+    "bookAppointment": "unique-webhook-id-1",
+    "answerQuestion": "unique-webhook-id-2", 
+    "logLead": "unique-webhook-id-3",
+    "identifyAppointment": "unique-webhook-id-4",
+    "modifyAppointment": "unique-webhook-id-5",
+    "cancelAppointment": "unique-webhook-id-6"
+  }
+}
+```
+
+### How It Works
+
+1. **Base URL**: Common webhook endpoint prefix for your n8n instance
+2. **Tool-specific IDs**: Unique identifier for each tool's webhook endpoint
+3. **Final URLs**: System combines `base_url` + tool ID to create complete webhook URLs
+
+### Example Generated URLs
+
+With the above configuration:
+- `bookAppointment`: `https://your-n8n-instance.com/webhook/unique-webhook-id-1`
+- `answerQuestion`: `https://your-n8n-instance.com/webhook/unique-webhook-id-2`
+- etc.
+
+### Benefits
+
+- **Flexibility**: Use different n8n workflows for different actions
+- **Scalability**: Easy to add new webhook endpoints
+- **Environment Management**: Different webhook IDs per environment (dev/staging/prod)
+- **A/B Testing**: Route different actions to different backend systems
+
+### Adding New Tools
+
+To add a new tool with webhook support:
+
+1. Add the tool name and webhook ID to config.json `webhooks` section
+2. Add the tool to your Retell agent template with any placeholder URL
+3. The build system will automatically replace the URL based on the tool's `name` field
 
 ## Adding Custom Dynamic Variables
 

@@ -4,7 +4,7 @@ const prettier = require("prettier");
 
 class LayerBuilder {
   constructor() {
-    this.sourceDir = "src/";
+    this.sourceDir = "template/";
     this.distDir = "dist";
     this.prettierConfig = null;
     this.templateConfig = null;
@@ -117,18 +117,19 @@ class LayerBuilder {
   async loadTemplateVariables() {
     try {
       // Load business configuration
-      let config;
       try {
-        config = JSON.parse(await fs.readFile("config.json", "utf8"));
+        this.config = JSON.parse(await fs.readFile("config.json", "utf8"));
       } catch {
         console.log(
           "📋 No config.json found, using auto-generation from repository"
         );
-        config = {
+        this.config = {
           business: {},
           templating: { auto_generate_from_repo: true }
         };
       }
+      
+      const config = this.config; // Keep local reference for compatibility
 
       // Load package.json for repository information
       const packageJson = JSON.parse(await fs.readFile("package.json", "utf8"));
@@ -206,6 +207,27 @@ class LayerBuilder {
       };
       this.businessConfig = {};
     }
+    
+    // Load prompts after template variables are set
+    await this.loadPrompts();
+  }
+
+  async loadPrompts() {
+    try {
+      // Load core prompt (for Retell agent global_prompt) from dist directory
+      const corePromptPath = this.processTemplateFilename('dist/prompts/{{business_name}} Core Prompt.md');
+      this.corePrompt = await fs.readFile(corePromptPath, 'utf8');
+      
+      // Load RAG prompt (for answerQuestion n8n workflow) from dist directory
+      const ragPromptPath = this.processTemplateFilename('dist/prompts/{{business_name}} Answer Question - RAG Agent Prompt.md');
+      this.ragPrompt = await fs.readFile(ragPromptPath, 'utf8');
+      
+      console.log('📝 Prompts loaded successfully');
+    } catch (error) {
+      console.warn('⚠️ Could not load prompts:', error.message);
+      this.corePrompt = null;
+      this.ragPrompt = null;
+    }
   }
 
   generateBusinessName(repoName) {
@@ -228,6 +250,11 @@ class LayerBuilder {
     // Only process template variables in specific files and contexts
     if (filePath.includes("Retell Agent.json")) {
       return this.processRetellAgentTemplate(content);
+    }
+    
+    // Process n8n files for prompt injection
+    if (filePath.includes("n8n/") && filePath.includes("answerQuestion.json")) {
+      return this.processN8nAnswerQuestionTemplate(content);
     }
 
     // For filenames, always process templates
@@ -266,6 +293,22 @@ class LayerBuilder {
           this.templateVariables.interruption_sensitivity;
       }
 
+      // Update global prompt if core prompt is loaded
+      if (this.corePrompt && jsonData.conversationFlow?.global_prompt !== undefined) {
+        // Apply template variables to the core prompt content
+        let processedPrompt = this.corePrompt;
+        for (const [key, value] of Object.entries(this.templateVariables)) {
+          const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+          processedPrompt = processedPrompt.replace(regex, value);
+        }
+        // Also handle legacy {{agent_name}} -> use agent_human_name
+        processedPrompt = processedPrompt.replace(
+          /\{\{agent_name\}\}/g,
+          this.templateVariables.agent_human_name
+        );
+        jsonData.conversationFlow.global_prompt = processedPrompt;
+      }
+
       // Update dynamic variables if they exist
       if (jsonData.conversationFlow?.default_dynamic_variables) {
         const dynVars = jsonData.conversationFlow.default_dynamic_variables;
@@ -300,8 +343,8 @@ class LayerBuilder {
         }
       }
 
-      // Keep webhook URLs as-is - don't template them
-      // Webhooks are environment/deployment specific, not business specific
+      // Update webhook URLs in tools
+      this.updateToolWebhookUrls(jsonData.conversationFlow?.tools);
 
       // Update transfer phone number in transfer nodes
       this.updateTransferNodes(jsonData.conversationFlow?.nodes);
@@ -316,6 +359,44 @@ class LayerBuilder {
     }
   }
 
+  processN8nAnswerQuestionTemplate(content) {
+    try {
+      const jsonData = JSON.parse(content);
+
+      // Update systemMessage in the Answer Agent node if RAG prompt is loaded
+      if (this.ragPrompt && jsonData.nodes) {
+        // Apply template variables to the RAG prompt content
+        let processedPrompt = this.ragPrompt;
+        for (const [key, value] of Object.entries(this.templateVariables)) {
+          const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+          processedPrompt = processedPrompt.replace(regex, value);
+        }
+        // Also handle legacy {{agent_name}} -> use agent_human_name
+        processedPrompt = processedPrompt.replace(
+          /\{\{agent_name\}\}/g,
+          this.templateVariables.agent_human_name
+        );
+
+        // Find and update the Answer Agent node
+        jsonData.nodes.forEach(node => {
+          if (node.name === "Answer Agent" && 
+              node.type === "@n8n/n8n-nodes-langchain.agent" &&
+              node.parameters?.options?.systemMessage !== undefined) {
+            node.parameters.options.systemMessage = processedPrompt;
+          }
+        });
+      }
+
+      return JSON.stringify(jsonData, null, 2);
+    } catch (error) {
+      console.warn(
+        "⚠️ Could not parse n8n JSON for template processing:",
+        error.message
+      );
+      return content;
+    }
+  }
+
   updateTransferNodes(nodes) {
     if (!nodes) return;
 
@@ -323,6 +404,23 @@ class LayerBuilder {
       if (node.type === "transfer_call" && node.transfer_destination?.number) {
         node.transfer_destination.number =
           this.templateVariables.transfer_phone_number;
+      }
+    });
+  }
+
+  updateToolWebhookUrls(tools) {
+    if (!tools || !this.config.webhooks) return;
+
+    const webhooks = this.config.webhooks;
+    const baseUrl = webhooks.base_url || "https://n8n.srv836523.hstgr.cloud/webhook";
+
+    tools.forEach(tool => {
+      if (tool.type === "custom" && tool.url && tool.name) {
+        // Get webhook ID for this tool from config
+        const webhookId = webhooks[tool.name];
+        if (webhookId) {
+          tool.url = `${baseUrl}/${webhookId}`;
+        }
       }
     });
   }
@@ -405,6 +503,65 @@ class LayerBuilder {
     return files;
   }
 
+  async processFileEntry(fileInfo, stats) {
+    try {
+      // Process template filename
+      const processedRelativePath = fileInfo.relativePath
+        .split(path.sep)
+        .map(segment => this.processTemplateFilename(segment))
+        .join(path.sep);
+
+      // Create directory structure in dist
+      const outputDir = path.join(
+        this.distDir,
+        path.dirname(processedRelativePath)
+      );
+      await this.ensureDir(outputDir);
+
+      const outputPath = path.join(this.distDir, processedRelativePath);
+
+      if (fileInfo.isProcessable) {
+        // Process and optimize the file
+        const result = await this.processFile(
+          fileInfo.sourcePath,
+          outputPath
+        );
+
+        stats.totalFiles++;
+        stats.totalOriginalSize += result.original;
+        stats.totalProcessedSize += result.processed;
+
+        console.log(
+          `✅ ${processedRelativePath} - ${result.reduction}% size reduction`
+        );
+      } else {
+        // Copy file with template processing for content
+        const content = await fs.readFile(fileInfo.sourcePath, "utf8");
+        const processedContent = this.processTemplateContent(
+          content,
+          fileInfo.sourcePath
+        );
+        await fs.writeFile(outputPath, processedContent, "utf8");
+
+        const stat = await fs.stat(fileInfo.sourcePath);
+
+        stats.totalFiles++;
+        stats.totalOriginalSize += stat.size;
+        stats.totalProcessedSize += Buffer.byteLength(
+          processedContent,
+          "utf8"
+        );
+
+        console.log(`📄 ${processedRelativePath} - template processed`);
+      }
+    } catch (error) {
+      console.error(
+        `❌ Error processing ${fileInfo.relativePath}:`,
+        error.message
+      );
+    }
+  }
+
   async build() {
     console.log("🔧 Starting build process...");
 
@@ -421,63 +578,23 @@ class LayerBuilder {
 
     console.log(`📋 Found ${allFiles.length} files to process`);
 
-    for (const fileInfo of allFiles) {
-      try {
-        // Process template filename
-        const processedRelativePath = fileInfo.relativePath
-          .split(path.sep)
-          .map(segment => this.processTemplateFilename(segment))
-          .join(path.sep);
+    // First phase: Process prompt files first
+    const promptFiles = allFiles.filter(f => f.relativePath.includes('prompts/'));
+    const otherFiles = allFiles.filter(f => !f.relativePath.includes('prompts/'));
 
-        // Create directory structure in dist
-        const outputDir = path.join(
-          this.distDir,
-          path.dirname(processedRelativePath)
-        );
-        await this.ensureDir(outputDir);
+    // Process prompt files first
+    for (const fileInfo of promptFiles) {
+      await this.processFileEntry(fileInfo, stats);
+    }
 
-        const outputPath = path.join(this.distDir, processedRelativePath);
+    // Load prompts from the processed files in dist
+    if (promptFiles.length > 0) {
+      await this.loadPrompts();
+    }
 
-        if (fileInfo.isProcessable) {
-          // Process and optimize the file
-          const result = await this.processFile(
-            fileInfo.sourcePath,
-            outputPath
-          );
-
-          stats.totalFiles++;
-          stats.totalOriginalSize += result.original;
-          stats.totalProcessedSize += result.processed;
-
-          console.log(
-            `✅ ${processedRelativePath} - ${result.reduction}% size reduction`
-          );
-        } else {
-          // Copy file with template processing for content
-          const content = await fs.readFile(fileInfo.sourcePath, "utf8");
-          const processedContent = this.processTemplateContent(
-            content,
-            fileInfo.sourcePath
-          );
-          await fs.writeFile(outputPath, processedContent, "utf8");
-
-          const stat = await fs.stat(fileInfo.sourcePath);
-
-          stats.totalFiles++;
-          stats.totalOriginalSize += stat.size;
-          stats.totalProcessedSize += Buffer.byteLength(
-            processedContent,
-            "utf8"
-          );
-
-          console.log(`📄 ${processedRelativePath} - template processed`);
-        }
-      } catch (error) {
-        console.error(
-          `❌ Error processing ${fileInfo.relativePath}:`,
-          error.message
-        );
-      }
+    // Second phase: Process all other files (now that prompts are loaded)
+    for (const fileInfo of otherFiles) {
+      await this.processFileEntry(fileInfo, stats);
     }
 
     // Create build info
