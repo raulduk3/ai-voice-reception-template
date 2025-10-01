@@ -1,4 +1,4 @@
-name: Build and Release Layer 7 AI Voice
+name: Build and Release AI Voice Template Build
 
 on:
   push:
