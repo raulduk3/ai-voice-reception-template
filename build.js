@@ -4,7 +4,7 @@ const prettier = require('prettier');
 
 class LayerBuilder {
     constructor() {
-        this.sourceDir = '.';
+        this.sourceDir = 'src/';
         this.distDir = 'dist';
         this.prettierConfig = null;
     }
