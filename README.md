@@ -1,6 +1,4 @@
 # Layer 7 AI Voice Receptionist Template
-[![GitHub release](https://img.shields.io/github/v/release/raulduk3/layer7-ai-voice)](https://github.com/raulduk3/layer7-ai-voice/releases/latest)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/raulduk3/layer7-ai-voice/build.yml)](https://github.com/raulduk3/layer7-ai-voice/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
 [![Retell.ai](https://img.shields.io/badge/Retell.ai-Compatible-blue)](https://retell.ai/)
