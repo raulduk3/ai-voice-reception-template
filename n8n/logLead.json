@@ -1,0 +1,82 @@
+{
+  "name": "logLead",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 200],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "logLead",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Append Row to Google Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [550, 200],
+      "parameters": {
+        "operation": "append",
+        "sheetId": "YOUR_LEADS_SHEET_ID",
+        "range": "A:F",
+        "options": {
+          "valueInputMode": "RAW"
+        },
+        "fields": {
+          "values": "={{[$json.name, $json.phone, $json.email || '', $json.service_interest || '', $json.notes || '', $json.timestamp || new Date().toISOString()]}}"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": "Google Sheets Account"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Format Success",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: $json.name,\n    phone: $json.phone,\n    email: $json.email || null,\n    service_interest: $json.service_interest || null,\n    notes: $json.notes || null,\n    timestamp: $json.timestamp || new Date().toISOString()\n  }\n}}];"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Failure Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'failure',\n  message: 'Lead could not be logged due to invalid or missing data.',\n  data: $json\n}}];"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 600],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'System error occurred while logging lead.',\n  data: $json\n}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook In": {
+      "main": [
+        [{"node": "Append Row to Google Sheet","type": "main","index": 0}]
+      ]
+    },
+    "Append Row to Google Sheet": {
+      "main": [
+        [{"node": "Format Success","type": "main","index": 0}],
+        [{"node": "Failure Handler","type": "main","index": 0}],
+        [{"node": "Error Handler","type": "error","index": 0}]
+      ]
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "name": "identifyAppointment",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "identifyAppointment",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Search GCal Events",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "parameters": {
+        "operation": "getAll",
+        "calendarId": "primary",
+        "returnAll": true,
+        "filters": {
+          "q": "={{$json.query || \"\"}}"
+        }
+      },
+      "credentials": {
+        "googleApi": "Google API Account"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Check Matches",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "parameters": {
+        "functionCode": "const events = items[0].json;\nif (!events || !events.length) {\n  return [{json: {\n    status: 'failure',\n    message: 'No matching appointments found.',\n    data: {\n      query: $json.query,\n      context: $json.context || null\n    }\n  }}];\n}\nif (events.length > 1) {\n  return [{json: {\n    status: 'failure',\n    message: 'Multiple matching appointments found. Clarification required.',\n    data: {\n      matches: events.map(e => ({id: e.id, summary: e.summary, start: e.start, end: e.end}))\n    }\n  }}];\n}\nreturn [{json: {\n  status: 'success',\n  data: {\n    appointment_id: events[0].id,\n    summary: events[0].summary,\n    start: events[0].start,\n    end: events[0].end\n  }\n}}];"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 500],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'error',\n  message: $json.message || 'Unknown error occurred while identifying appointment.',\n  data: $json\n}}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook In": {
+      "main": [
+        [{"node": "Search GCal Events","type": "main","index": 0}]
+      ]
+    },
+    "Search GCal Events": {
+      "main": [
+        [{"node": "Check Matches","type": "main","index": 0}],
+        [{"node": "Error Handler","type": "error","index": 0}]
+      ]
+    }
+  }
+}

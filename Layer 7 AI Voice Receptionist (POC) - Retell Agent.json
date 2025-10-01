@@ -1,0 +1,985 @@
+{
+  "agent_id": "",
+  "channel": "voice",
+  "last_modification_timestamp": 1759306330767,
+  "agent_name": "Layer 7 AI Voice Receptionist (POC)",
+  "response_engine": {
+    "type": "conversation-flow",
+    "version": 0,
+    "conversation_flow_id": "conversation_flow_c485db084c84"
+  },
+  "language": "en-US",
+  "opt_out_sensitive_data_storage": false,
+  "data_storage_setting": "everything",
+  "opt_in_signed_url": false,
+  "version": 0,
+  "is_published": false,
+  "post_call_analysis_model": "gpt-4o-mini",
+  "pii_config": {
+    "mode": "post_call",
+    "categories": []
+  },
+  "voice_id": "11labs-Cimo",
+  "max_call_duration_ms": 600000,
+  "interruption_sensitivity": 0.9,
+  "allow_user_dtmf": true,
+  "user_dtmf_options": {},
+  "retellLlmData": null,
+  "conversationFlow": {
+    "conversation_flow_id": "conversation_flow_c485db084c84",
+    "version": 0,
+    "global_prompt": "You are {{agent_name}}, the AI receptionist for {{business_name}}. Your role is to answer inbound phone calls in a polite, natural, and professional manner. You must use the defined actions to handle requests such as booking, modifying, or canceling appointments, answering questions, and logging leads.\n\n## Core Instructions\n- Track the entire conversation until the call ends.  \n- Collect information gradually and confirm back to the caller before executing an action.  \n- Do not invent or assume business details.  \n- NEVER disclose customer-specific booking details through `answerQuestion` or general responses.  \n- All requests for personal appointment information must be routed through `identifyAppointment`.  \n- When an action is executed, assume the client's system handles confirmations and reminders.  \n- Always ensure required fields for any action are collected and confirmed with the caller.  \n\n## Appointment Booking\n- For `bookAppointment`, collect and confirm all required fields before calling.  \n- Ask naturally for each piece of information (service, stylist, date, time, location, notes).  \n- Never call until the schema is satisfied.  \n\n## Appointment Modification\n- For `modifyAppointment`, first identify the appointment (use `identifyAppointment` if needed).  \n- Collect identifying details (name, phone, date/time).  \n- Gather all requested changes and confirm before executing.  \n\n## Appointment Cancellation\n- For `cancelAppointment`, first identify the appointment.  \n- Collect identifying details and the date/time.  \n- Confirm the cancellation before executing.  \n\n## Appointment Identification\n- For `identifyAppointment`, use the caller's description to retrieve matches.  \n- If multiple or none, ask clarifying questions until one is identified.  \n- Only then proceed with modification or cancellation.  \n\n## FAQs\n- Use built-in FAQ data first.  \n- For general, non-personal questions (services, hours, policies), call `answerQuestion`.  \n- NEVER use `answerQuestion` for specific appointments or customer details.  \n- If uncertain, call `logLead` for follow-up.  \n\n## AI Supported Hours\n{{ai_support_hours}}\n\n## Actions Available\n- `bookAppointment`  \n- `identifyAppointment`  \n- `modifyAppointment`  \n- `cancelAppointment`  \n- `answerQuestion`  \n- `logLead`  \n\n## Closing\nAlways close politely:  \n\"Thank you for calling {{business_name}}, we look forward to seeing you.\"",
+    "nodes": [
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Analyze the caller's intent and route the conversation to the appropriate node based on their request."
+        },
+        "name": "Router",
+        "edges": [
+          {
+            "destination_node_id": "node-1759299298668",
+            "id": "edge-1759306500001",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks about specific personal appointment details, mentions names, phone numbers, or requests information tied to an individual."
+            }
+          },
+          {
+            "destination_node_id": "node-1759267476271",
+            "id": "edge-1759286128401",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller requests general information or asks non-personal questions about services, business operations, or general booking policies."
+            }
+          },
+          {
+            "destination_node_id": "node-1759285368491",
+            "id": "edge-1",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller expresses intent to schedule a new appointment."
+            }
+          },
+          {
+            "destination_node_id": "node-1759299298668",
+            "id": "edge-2",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller requests to change details of an existing appointment."
+            }
+          },
+          {
+            "destination_node_id": "node-1759299298668",
+            "id": "edge-1759286143486",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller requests to cancel an existing appointment."
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759305738582",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller indicates completion of their request or expresses desire to end the conversation."
+            }
+          },
+          {
+            "destination_node_id": "node-1759286205338",
+            "id": "edge-1759286706982",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller requests to speak with a human representative or supervisor."
+            }
+          },
+          {
+            "destination_node_id": "node-1759267848412",
+            "id": "edge-1759286171992",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller's intent is unclear or does not match other defined categories."
+            }
+          }
+        ],
+        "global_node_setting": {
+          "condition": "Caller modifies their request or expresses unclear intent requiring re-routing."
+        },
+        "start_speaker": "agent",
+        "id": "start-node-1759266611426",
+        "type": "conversation",
+        "display_position": {
+          "x": 777,
+          "y": 1781
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "name": "Answer Question",
+        "edges": [
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759267974537",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller's question has been successfully answered and they are satisfied with the response."
+            }
+          },
+          {
+            "destination_node_id": "node-1759288307521",
+            "id": "edge-1759286493146",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller disputes the provided answer or the knowledge base lacks sufficient information to address their inquiry."
+            }
+          }
+        ],
+        "id": "node-1759267476271",
+        "type": "conversation",
+        "display_position": {
+          "x": 1277,
+          "y": 1245
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Provide accurate and helpful responses to the caller's questions using available knowledge base information."
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Offer the caller an option to receive a callback from human support when the AI agent is unable to fulfill their request or encounters an error."
+        },
+        "name": "Fallback/Log Lead/Provide Callback",
+        "edges": [
+          {
+            "destination_node_id": "node-1759295548716",
+            "id": "edge-1759267848412",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "All required information has been collected to create a lead record for callback."
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759297549853",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller declines the offer to receive a callback from human support."
+            }
+          },
+          {
+            "destination_node_id": "node-1759286205338",
+            "id": "edge-1759301888114",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller requests to speak with a human representative or supervisor."
+            }
+          }
+        ],
+        "global_node_setting": {
+          "condition": "Caller requests callback assistance or system encounters an error requiring human intervention for resolution."
+        },
+        "id": "node-1759267848412",
+        "type": "conversation",
+        "display_position": {
+          "x": 2777,
+          "y": 1625
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "name": "End Call",
+        "id": "node-1759285139512",
+        "type": "end",
+        "display_position": {
+          "x": 4277,
+          "y": 2509
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Conclude the call in a professional and courteous manner."
+        }
+      },
+      {
+        "custom_sip_headers": {},
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+17734699726"
+        },
+        "edge": {
+          "destination_node_id": "node-1759267848412",
+          "id": "edge-1759285209751",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Inform the caller that their call is being transferred to a human representative."
+        },
+        "name": "Transfer Call",
+        "id": "node-1759285209751",
+        "transfer_option": {
+          "type": "cold_transfer",
+          "show_transferee_as_caller": false
+        },
+        "type": "transfer_call",
+        "display_position": {
+          "x": 3777,
+          "y": 2323
+        }
+      },
+      {
+        "name": "Gather Appointment Details",
+        "edges": [
+          {
+            "destination_node_id": "node-1759287172272",
+            "id": "edge-1759285368491",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "All required appointment information has been collected and verified for booking."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759299265144",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller changes their mind and no longer wishes to schedule an appointment."
+            }
+          }
+        ],
+        "id": "node-1759285368491",
+        "type": "conversation",
+        "display_position": {
+          "x": 1796.4800853708648,
+          "y": 350.8406829669184
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect all necessary appointment information from the caller to execute the bookAppointment action successfully."
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "name": "Escalation Logic",
+        "edges": [
+          {
+            "destination_node_id": "node-1759285209751",
+            "id": "edge-1759286308989",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The call is received during designated AI support hours when human transfer is available."
+            }
+          }
+        ],
+        "id": "node-1759286205338",
+        "else_edge": {
+          "destination_node_id": "node-1759267848412",
+          "id": "edge-1759286205338",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Else"
+          }
+        },
+        "type": "branch",
+        "display_position": {
+          "x": 3277,
+          "y": 2142
+        }
+      },
+      {
+        "tool_id": "tool-1759287159165",
+        "name": "Book Appointment",
+        "edges": [
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759287359647",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Success"
+            }
+          },
+          {
+            "destination_node_id": "node-1759287611013",
+            "id": "edge-1759287496188",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Failure"
+            }
+          },
+          {
+            "destination_node_id": "node-1759267848412",
+            "id": "edge-1759287505026",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Error"
+            }
+          }
+        ],
+        "id": "node-1759287172272",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 2277,
+          "y": 242
+        },
+        "wait_for_result": true
+      },
+      {
+        "name": "Re-Verify Appointment Details",
+        "edges": [
+          {
+            "destination_node_id": "node-1759285368491",
+            "id": "edge-1759287611013",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller provides corrected and valid appointment information that meets system requirements."
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759290069897",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller decides to abandon the appointment booking process."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759306509467",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller chooses not to proceed with any of the available options."
+            }
+          }
+        ],
+        "id": "node-1759287611013",
+        "type": "conversation",
+        "display_position": {
+          "x": 2777,
+          "y": 0
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Address any invalid appointment details that caused the booking failure and collect corrected information from the caller to resolve the identified errors or constraints."
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "tool_id": "tool-1759288305078",
+        "name": "Answer Question",
+        "edges": [
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759294852015",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Success"
+            }
+          },
+          {
+            "destination_node_id": "node-1759298254864",
+            "id": "edge-1759294865725",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Failure"
+            }
+          },
+          {
+            "destination_node_id": "node-1759267848412",
+            "id": "edge-1759294859184",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "A system error occurred during question processing."
+            }
+          }
+        ],
+        "id": "node-1759288307521",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 1777,
+          "y": 1520
+        },
+        "wait_for_result": true
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Provide a summary of the interaction and inquire if the caller has any additional questions regarding appointments or services at {{business_name}}."
+        },
+        "name": "End Call Confirmation",
+        "edges": [
+          {
+            "destination_node_id": "node-1759285139512",
+            "id": "edge-1759289883915",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller confirms they are ready to end the conversation."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759290019289",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Else"
+            }
+          }
+        ],
+        "global_node_setting": {
+          "condition": "Caller indicates readiness to conclude the conversation and end the call."
+        },
+        "id": "node-1759289883915",
+        "type": "conversation",
+        "display_position": {
+          "x": 3777,
+          "y": 166
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "tool_id": "tool-1759295546196",
+        "name": "Log Lead",
+        "edges": [
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759297634561",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Success"
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759301979878",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Error"
+            }
+          }
+        ],
+        "id": "node-1759295548716",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 3277,
+          "y": 242
+        },
+        "wait_for_result": true
+      },
+      {
+        "name": "Q/A Fail",
+        "edges": [
+          {
+            "destination_node_id": "node-1759267848412",
+            "id": "edge-1759298359614",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller expresses desire to end the conversation after being unable to get their question answered."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759298254864",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller chooses to continue the conversation despite the system being unable to answer their question."
+            }
+          }
+        ],
+        "id": "node-1759298254864",
+        "type": "conversation",
+        "display_position": {
+          "x": 2277,
+          "y": 1662
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Acknowledge that the system cannot provide an answer to the caller's question and offer alternative assistance."
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "name": "Identify Appointment",
+        "edges": [
+          {
+            "destination_node_id": "node-1759299579503",
+            "id": "edge-1759299298668",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Sufficient appointment details have been collected to search for matching appointments."
+            }
+          },
+          {
+            "destination_node_id": "node-1759267848412",
+            "id": "edge-1759299413073",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is unable to provide sufficient details to identify their appointment."
+            }
+          }
+        ],
+        "id": "node-1759299298668",
+        "type": "conversation",
+        "display_position": {
+          "x": 1767.2599573145676,
+          "y": 1091.0243244092862
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel. **SECURITY REQUIREMENT: You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller.**"
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "tool_id": "tool-1759299574542",
+        "name": "Identify Appointment",
+        "edges": [
+          {
+            "destination_node_id": "node-1759299860372",
+            "id": "edge-1759299602214",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Success"
+            }
+          },
+          {
+            "destination_node_id": "node-1759299298668",
+            "id": "edge-1759299791730",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Failure"
+            }
+          },
+          {
+            "destination_node_id": "node-1759267848412",
+            "id": "edge-1759299800128",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Error"
+            }
+          }
+        ],
+        "id": "node-1759299579503",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 2271.1559743887406,
+          "y": 1087.3761024450378
+        },
+        "wait_for_result": true
+      },
+      {
+        "name": "Cancel or Modify Existing Appointment",
+        "edges": [
+          {
+            "destination_node_id": "node-1759300443418",
+            "id": "edge-1759299860372",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Appointment has been identified and modification details have been collected from the caller."
+            }
+          },
+          {
+            "destination_node_id": "node-1759300500941",
+            "id": "edge-1759300131480",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Appointment has been identified and caller has confirmed their intention to cancel."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759301710230",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller decides not to proceed with either appointment modification or cancellation."
+            }
+          }
+        ],
+        "id": "node-1759299860372",
+        "type": "conversation",
+        "display_position": {
+          "x": 2777,
+          "y": 755
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Using the identified appointment information, prepare to execute the requested modification or cancellation action while ensuring all required parameters are properly fulfilled."
+        },
+        "knowledge_base_ids": []
+      },
+      {
+        "tool_id": "tool-1759300315801",
+        "name": "Modify Appointment",
+        "edges": [
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759301968646",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Success"
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759302058185",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Error"
+            }
+          }
+        ],
+        "id": "node-1759300443418",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 3277,
+          "y": 540
+        },
+        "wait_for_result": true
+      },
+      {
+        "tool_id": "tool-1759300498371",
+        "name": "Cancel Appointment",
+        "edges": [
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759301938699",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Success"
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759302005400",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Error"
+            }
+          }
+        ],
+        "id": "node-1759300500941",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 3277,
+          "y": 838
+        },
+        "wait_for_result": true
+      },
+      {
+        "name": "Welcome",
+        "edges": [
+          {
+            "destination_node_id": "node-1759285139512",
+            "id": "edge-1759303421427",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller indicates they wish to conclude the conversation."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759305123422",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Else"
+            }
+          }
+        ],
+        "id": "node-1759303421427",
+        "type": "conversation",
+        "display_position": {
+          "x": 277,
+          "y": 2361
+        },
+        "instruction": {
+          "type": "prompt",
+          "text": "Provide a professional and welcoming greeting that includes your name, the business name, appropriate time-based salutation, and express genuine interest in assisting the caller.\n{{agent_name}}\n{{business_name}}"
+        },
+        "knowledge_base_ids": []
+      }
+    ],
+    "start_node_id": "node-1759303421427",
+    "start_speaker": "agent",
+    "tools": [
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Books an appointment.",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "tool_id": "tool-1759287159165",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "name": "bookAppointment",
+        "response_variables": {},
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Full name of the caller"
+            },
+            "date": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+              "description": "Appointment date in YYYY-MM-DD format"
+            },
+            "time": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "description": "Appointment time in 24-hour format HH:MM"
+            },
+            "phone": {
+              "type": "string",
+              "pattern": "^[0-9]{10}(x[0-9]+)?$",
+              "description": "10-digit phone number, optional extension (e.g., 1234567890x123)"
+            },
+            "service": {
+              "type": "string",
+              "description": "Type of appointment or service requested"
+            }
+          },
+          "required": [
+            "name",
+            "service",
+            "date",
+            "time",
+            "phone"
+          ]
+        }
+      },
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Answers a question using a RAG agent.",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "tool_id": "tool-1759288305078",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "name": "answerQuestion",
+        "response_variables": {},
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "description": "The exact question or information request from the caller. Must NOT contain requests for personal appointment details, names, phone numbers, or customer-specific information."
+            },
+            "context": {
+              "type": "string",
+              "description": "Optional additional context about the caller or topic."
+            }
+          },
+          "required": [
+            "question"
+          ]
+        },
+        "response_format": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "success",
+                "failure",
+                "error"
+              ],
+              "description": "Status of the query processing"
+            },
+            "answer": {
+              "type": "string",
+              "description": "The response to the caller's question (only for success status)"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for failure or error (optional)"
+            },
+            "next_action": {
+              "type": "string",
+              "description": "Suggested next action for handling the request (optional)"
+            }
+          },
+          "required": [
+            "status"
+          ]
+        }
+      },
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Logs a lead/callback request.",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "tool_id": "tool-1759295546196",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "name": "logLead",
+        "response_variables": {},
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Caller\u2019s full name, if provided."
+            },
+            "service_interest": {
+              "type": "string",
+              "description": "The service or product the caller expressed interest in."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Free-form notes about the conversation, unanswered questions, or follow-up needed."
+            },
+            "phone": {
+              "type": "string",
+              "description": "Caller\u2019s phone number, if provided."
+            },
+            "email": {
+              "type": "string",
+              "description": "Caller\u2019s email address, if provided."
+            },
+            "timestamp": {
+              "type": "string",
+              "description": "Time the lead was logged."
+            }
+          },
+          "required": [
+            "phone",
+            "name"
+          ]
+        }
+      },
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Identifies possible matching appointments.",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "tool_id": "tool-1759299574542",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "name": "identifyAppointment",
+        "response_variables": {},
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "context": {
+              "type": "string",
+              "description": "Optional contextual hints such as caller name, service type, or approximate date."
+            },
+            "query": {
+              "type": "string",
+              "description": "Caller\u2019s natural language description of the appointment they want to modify or cancel."
+            }
+          },
+          "required": []
+        }
+      },
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Modifies an existing appointment",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "tool_id": "tool-1759300315801",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "name": "modifyAppointment",
+        "response_variables": {},
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "updates": {
+              "type": "object",
+              "description": "An object containing fields to be updated. The exact keys depend on the backend schema (e.g., new_date, new_time, service, notes).",
+              "additionalProperties": true
+            },
+            "appointment_id": {
+              "type": "string",
+              "description": "Backend-specific identifier for the appointment (Google Calendar event.id, CRM booking ID, etc.)."
+            }
+          },
+          "required": [
+            "appointment_id"
+          ]
+        }
+      },
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "POST",
+        "query_params": {},
+        "description": "Cancels an appointment.",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "tool_id": "tool-1759300498371",
+        "args_at_root": true,
+        "timeout_ms": 120000,
+        "name": "cancelAppointment",
+        "response_variables": {},
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "appointment_id": {
+              "type": "string",
+              "description": "Backend-specific identifier for the appointment (Google Calendar event.id, CRM booking ID, etc.)."
+            },
+            "reason": {
+              "type": "string",
+              "description": "Optional reason for cancellation provided by the caller."
+            }
+          },
+          "required": [
+            "appointment_id"
+          ]
+        }
+      }
+    ],
+    "model_choice": {
+      "type": "cascading",
+      "model": "gpt-4.1"
+    },
+    "default_dynamic_variables": {
+      "agent_name": "Myra",
+      "ai_support_hours": "24/7",
+      "business_name": "Caroline Smith's Salon"
+    },
+    "knowledge_base_ids": [],
+    "kb_config": {
+      "top_k": 4,
+      "filter_score": 0.6
+    },
+    "begin_tag_display_position": {
+      "x": 0,
+      "y": 2523
+    },
+    "is_published": false
+  },
+  "llmURL": null
+}
