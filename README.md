@@ -1,6 +1,9 @@
 # Layer 7 AI Voice Receptionist Template
-![License: AGPL v3](https://img.shields.io/badge/License-AGPL--3.0-yellow.svg)[![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
-[![Retell.ai](https://img.shields.io/badge/Retell.ai-Compatible-blue)](https://retell.ai/)
+[![GitHub release](https://img.shields.io/github/v/release/raulduk3/layer7-ai-voice)](https://github.com/raulduk3/layer7-ai-voice/releases/latest)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/raulduk3/ai-voice-reception-template/build-deploy.yml)](https://github.com/raulduk3/ai-voice-reception-template/actions/workflows/build-deploy.yml)
+![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-yellow.svg)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
+[![Retell.ai](https://img.shields.io/badge/retell.ai-Compatible-blue)](https://retell.ai/)
 [![n8n](https://img.shields.io/badge/n8n-Workflows-orange)](https://n8n.io/)
 
 Professional AI voice receptionist template with intelligent templating system, PII protection, and seamless Retell.ai + n8n integration. Template-first approach: clone once, customize for unlimited clients.
