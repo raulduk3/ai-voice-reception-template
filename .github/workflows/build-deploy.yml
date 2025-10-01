@@ -107,7 +107,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          name: "AI Voice Receptionist Template v${{ steps.version.outputs.package_version }} (${{ steps.build_info.outputs.size_reduction }} size reduction)"
+          name: "AI Voice Receptionist Template v${{ steps.version.outputs.package_version }}"
           body: |
             # AI Voice Receptionist Template v${{ steps.version.outputs.package_version }}
             
