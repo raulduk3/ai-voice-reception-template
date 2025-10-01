@@ -90,9 +90,8 @@ The project includes GitHub Actions for automated builds and releases:
    - Generates detailed build statistics
 
 2. **Release Stage**: 
-   - Creates timestamped GitHub releases
+   - Creates versioned GitHub releases
    - Bundles optimized files as release assets
-   - Auto-tags releases with `v{version}-{timestamp}`
    - Makes distributions available for download
 
 3. **Optimization Features**:
