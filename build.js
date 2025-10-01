@@ -7,16 +7,22 @@ class LayerBuilder {
         this.sourceDir = 'src/';
         this.distDir = 'dist';
         this.prettierConfig = null;
+        this.templateConfig = null;
+        this.templateVariables = {};
     }
 
     async init() {
         // Load Prettier configuration
         this.prettierConfig = await prettier.resolveConfig('.');
 
+        // Load template configuration and variables
+        await this.loadTemplateVariables();
+
         // Ensure dist directory exists
         await this.ensureDir(this.distDir);
 
         console.log('🚀 Layer 7 AI Voice Build System Initialized');
+        console.log(`📋 Template Variables: ${Object.keys(this.templateVariables).join(', ')}`);
     }
 
     async ensureDir(dirPath) {
@@ -33,16 +39,17 @@ class LayerBuilder {
             const content = await fs.readFile(filePath, 'utf8');
             const ext = path.extname(filePath).toLowerCase();
 
-            let processedContent = content;
+            // First apply template variable replacement
+            let processedContent = this.processTemplateContent(content, filePath);
             let sizeReduction = 0;
 
             if (ext === '.json') {
                 try {
-                    // Validate JSON first
-                    JSON.parse(content);
+                    // Validate JSON after template processing
+                    JSON.parse(processedContent);
                     
                     // Format with Prettier first
-                    const formatted = await prettier.format(content, {
+                    const formatted = await prettier.format(processedContent, {
                         ...this.prettierConfig,
                         parser: 'json'
                     });
@@ -51,26 +58,27 @@ class LayerBuilder {
                     const minified = JSON.stringify(JSON.parse(formatted));
                     processedContent = minified;
 
-                    sizeReduction = ((content.length - minified.length) / content.length * 100).toFixed(1);
+                    sizeReduction = ((content.length - processedContent.length) / content.length * 100).toFixed(1);
                     
                 } catch (jsonError) {
                     console.warn(`⚠️ Invalid JSON in ${filePath}, copying as-is: ${jsonError.message}`);
-                    processedContent = content;
+                    // Keep the template-processed content even if JSON is invalid
                     sizeReduction = 0;
                 }
 
             } else if (ext === '.md') {
                 try {
-                    // Format Markdown with Prettier
-                    processedContent = await prettier.format(content, {
+                    // Format Markdown with Prettier after template processing
+                    const formatted = await prettier.format(processedContent, {
                         ...this.prettierConfig,
                         parser: 'markdown'
                     });
+                    processedContent = formatted;
 
                     sizeReduction = ((content.length - processedContent.length) / content.length * 100).toFixed(1);
                 } catch (mdError) {
                     console.warn(`⚠️ Could not format markdown ${filePath}, copying as-is: ${mdError.message}`);
-                    processedContent = content;
+                    // Keep the template-processed content even if formatting fails
                     sizeReduction = 0;
                 }
             } else {
@@ -95,6 +103,199 @@ class LayerBuilder {
 
     async copyFile(source, destination) {
         await fs.copyFile(source, destination);
+    }
+
+    async loadTemplateVariables() {
+        try {
+            // Load business configuration
+            let config;
+            try {
+                config = JSON.parse(await fs.readFile('config.json', 'utf8'));
+            } catch {
+                console.log('📋 No config.json found, using auto-generation from repository');
+                config = { business: {}, templating: { auto_generate_from_repo: true } };
+            }
+
+            // Load package.json for repository information
+            const packageJson = JSON.parse(
+                await fs.readFile('package.json', 'utf8')
+            );
+
+            // Set up template variables based on config or auto-generation
+            if (config.templating?.auto_generate_from_repo !== false) {
+                const repoName = packageJson.name || 'ai-voice-receptionist';
+                const businessName = config.business?.name || this.generateBusinessName(repoName);
+                
+                this.templateVariables = {
+                    repository_name: repoName,
+                    version: packageJson.version || '1.0.0',
+                    business_name: config.business?.name || businessName,
+                    agent_display_name: config.business?.agent_display_name || `${businessName} AI Voice Receptionist`,
+                    agent_human_name: config.business?.agent_human_name || businessName.split(' ')[0],
+                    ai_support_hours: config.business?.ai_support_hours || '24/7',
+                    transfer_phone_number: config.infrastructure?.transfer_phone_number || '+1234567890',
+                    voice_id: config.voice_settings?.voice_id || '11labs-Cimo',
+                    max_call_duration_ms: config.voice_settings?.max_call_duration_ms || 600000,
+                    interruption_sensitivity: config.voice_settings?.interruption_sensitivity || 0.9,
+                    // Add any custom dynamic variables from config
+                    ...(config.dynamic_variables || {})
+                };
+            } else {
+                // Use explicit config values only
+                this.templateVariables = {
+                    repository_name: packageJson.name || 'ai-voice-receptionist',
+                    version: packageJson.version || '1.0.0',
+                    business_name: config.business?.name || 'Your Business',
+                    agent_display_name: config.business?.agent_display_name || 'Your Business AI Voice Receptionist',
+                    agent_human_name: config.business?.agent_human_name || 'Assistant',
+                    ai_support_hours: config.business?.ai_support_hours || '24/7',
+                    transfer_phone_number: config.infrastructure?.transfer_phone_number || '+1234567890',
+                    voice_id: config.voice_settings?.voice_id || '11labs-Cimo',
+                    max_call_duration_ms: config.voice_settings?.max_call_duration_ms || 600000,
+                    interruption_sensitivity: config.voice_settings?.interruption_sensitivity || 0.9,
+                    // Add any custom dynamic variables from config
+                    ...(config.dynamic_variables || {})
+                };
+            }
+
+            // Store config for later use
+            this.businessConfig = config;
+
+            console.log('✅ Template variables loaded successfully');
+        } catch (error) {
+            console.warn('⚠️ Could not load configuration, using defaults:', error.message);
+            // Fallback defaults
+            this.templateVariables = {
+                repository_name: 'ai-voice-receptionist',
+                version: '1.0.0',
+                business_name: 'Your Business',
+                agent_display_name: 'Your Business AI Voice Receptionist',
+                agent_human_name: 'Assistant',
+                ai_support_hours: '24/7',
+                transfer_phone_number: '+1234567890',
+                voice_id: '11labs-Cimo',
+                max_call_duration_ms: 600000,
+                interruption_sensitivity: 0.9
+            };
+            this.businessConfig = {};
+        }
+    }
+
+    generateBusinessName(repoName) {
+        // Convert repository name to business name
+        return repoName
+            .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
+            .replace(/\b(ai|voice|receptionist|agent|bot|assistant)\b/gi, '') // Remove technical terms
+            .replace(/\s+/g, ' ') // Clean up multiple spaces
+            .trim()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Title case
+            .join(' ') || 'Your Business'; // Fallback
+    }
+
+    processTemplateContent(content, filePath = '') {
+        const ext = path.extname(filePath).toLowerCase();
+        
+        // Only process template variables in specific files and contexts
+        if (filePath.includes('Retell Agent.json')) {
+            return this.processRetellAgentTemplate(content);
+        }
+        
+        // For filenames, always process templates
+        if (filePath === '') {
+            let processedContent = content;
+            for (const [key, value] of Object.entries(this.templateVariables)) {
+                const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+                processedContent = processedContent.replace(regex, value);
+            }
+            return processedContent;
+        }
+        
+        // For other files, return as-is (no templating in prompts/markdown)
+        return content;
+    }
+
+    processRetellAgentTemplate(content) {
+        try {
+            const jsonData = JSON.parse(content);
+            
+            // Update main agent configuration fields
+            if (jsonData.agent_name !== undefined) {
+                jsonData.agent_name = this.templateVariables.agent_display_name;
+            }
+            
+            // Update voice and call settings
+            if (jsonData.voice_id !== undefined) {
+                jsonData.voice_id = this.templateVariables.voice_id;
+            }
+            if (jsonData.max_call_duration_ms !== undefined) {
+                jsonData.max_call_duration_ms = this.templateVariables.max_call_duration_ms;
+            }
+            if (jsonData.interruption_sensitivity !== undefined) {
+                jsonData.interruption_sensitivity = this.templateVariables.interruption_sensitivity;
+            }
+            
+            // Update dynamic variables if they exist
+            if (jsonData.conversationFlow?.default_dynamic_variables) {
+                const dynVars = jsonData.conversationFlow.default_dynamic_variables;
+                
+                // Update standard dynamic variables
+                if (dynVars.agent_name !== undefined) {
+                    dynVars.agent_name = this.templateVariables.agent_human_name;
+                }
+                if (dynVars.business_name !== undefined) {
+                    dynVars.business_name = this.templateVariables.business_name;
+                }
+                if (dynVars.ai_support_hours !== undefined) {
+                    dynVars.ai_support_hours = this.templateVariables.ai_support_hours;
+                }
+                
+                // Update any custom dynamic variables from config
+                for (const [key, value] of Object.entries(this.templateVariables)) {
+                    // Skip system/infrastructure variables, only update dynamic variables
+                    const systemVars = ['repository_name', 'version', 'agent_display_name', 'transfer_phone_number', 'voice_id', 'max_call_duration_ms', 'interruption_sensitivity'];
+                    if (!systemVars.includes(key) && dynVars[key] !== undefined) {
+                        dynVars[key] = value;
+                    }
+                }
+            }
+            
+            // Keep webhook URLs as-is - don't template them
+            // Webhooks are environment/deployment specific, not business specific
+            
+            // Update transfer phone number in transfer nodes
+            this.updateTransferNodes(jsonData.conversationFlow?.nodes);
+            
+            return JSON.stringify(jsonData, null, 2);
+        } catch (error) {
+            console.warn('⚠️ Could not parse JSON for template processing:', error.message);
+            return content;
+        }
+    }
+
+    updateTransferNodes(nodes) {
+        if (!nodes) return;
+        
+        nodes.forEach(node => {
+            if (node.type === 'transfer_call' && node.transfer_destination?.number) {
+                node.transfer_destination.number = this.templateVariables.transfer_phone_number;
+            }
+        });
+    }
+
+    processTemplateFilename(filename) {
+        let processedFilename = filename;
+        
+        // Replace template variables in filename
+        for (const [key, value] of Object.entries(this.templateVariables)) {
+            const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+            processedFilename = processedFilename.replace(regex, value);
+        }
+        
+        // Also handle legacy {{agent_name}} in filenames -> use agent_display_name
+        processedFilename = processedFilename.replace(/\{\{agent_name\}\}/g, this.templateVariables.agent_display_name);
+        
+        return processedFilename;
     }
 
     async scanDirectory(dir, baseDir = '') {
@@ -170,11 +371,17 @@ class LayerBuilder {
 
         for (const fileInfo of allFiles) {
             try {
+                // Process template filename
+                const processedRelativePath = fileInfo.relativePath
+                    .split(path.sep)
+                    .map(segment => this.processTemplateFilename(segment))
+                    .join(path.sep);
+                
                 // Create directory structure in dist
-                const outputDir = path.join(this.distDir, path.dirname(fileInfo.relativePath));
+                const outputDir = path.join(this.distDir, path.dirname(processedRelativePath));
                 await this.ensureDir(outputDir);
                 
-                const outputPath = path.join(this.distDir, fileInfo.relativePath);
+                const outputPath = path.join(this.distDir, processedRelativePath);
                 
                 if (fileInfo.isProcessable) {
                     // Process and optimize the file
@@ -184,17 +391,20 @@ class LayerBuilder {
                     stats.totalOriginalSize += result.original;
                     stats.totalProcessedSize += result.processed;
 
-                    console.log(`✅ ${fileInfo.relativePath} - ${result.reduction}% size reduction`);
+                    console.log(`✅ ${processedRelativePath} - ${result.reduction}% size reduction`);
                 } else {
-                    // Just copy the file
-                    await fs.copyFile(fileInfo.sourcePath, outputPath);
+                    // Copy file with template processing for content
+                    const content = await fs.readFile(fileInfo.sourcePath, 'utf8');
+                    const processedContent = this.processTemplateContent(content, fileInfo.sourcePath);
+                    await fs.writeFile(outputPath, processedContent, 'utf8');
+                    
                     const stat = await fs.stat(fileInfo.sourcePath);
                     
                     stats.totalFiles++;
                     stats.totalOriginalSize += stat.size;
-                    stats.totalProcessedSize += stat.size;
+                    stats.totalProcessedSize += Buffer.byteLength(processedContent, 'utf8');
                     
-                    console.log(`📄 ${fileInfo.relativePath} - copied`);
+                    console.log(`📄 ${processedRelativePath} - template processed`);
                 }
 
             } catch (error) {

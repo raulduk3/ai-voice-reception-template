@@ -2,7 +2,7 @@
   "agent_id": "",
   "channel": "voice",
   "last_modification_timestamp": 1759306330767,
-  "agent_name": "Layer 7 AI Voice Receptionist (POC)",
+  "agent_name": "{{agent_name}}",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
@@ -966,7 +966,7 @@
       "model": "gpt-4.1"
     },
     "default_dynamic_variables": {
-      "agent_name": "Myra",
+      "agent_human_name": "Myra",
       "ai_support_hours": "24/7",
       "business_name": "Caroline Smith's Salon"
     },
