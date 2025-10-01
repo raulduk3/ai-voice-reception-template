@@ -756,13 +756,7 @@
               "description": "Type of appointment or service requested"
             }
           },
-          "required": [
-            "name",
-            "service",
-            "date",
-            "time",
-            "phone"
-          ]
+          "required": ["name", "service", "date", "time", "phone"]
         }
       },
       {
@@ -790,20 +784,14 @@
               "description": "Optional additional context about the caller or topic."
             }
           },
-          "required": [
-            "question"
-          ]
+          "required": ["question"]
         },
         "response_format": {
           "type": "object",
           "properties": {
             "status": {
               "type": "string",
-              "enum": [
-                "success",
-                "failure",
-                "error"
-              ],
+              "enum": ["success", "failure", "error"],
               "description": "Status of the query processing"
             },
             "answer": {
@@ -819,9 +807,7 @@
               "description": "Suggested next action for handling the request (optional)"
             }
           },
-          "required": [
-            "status"
-          ]
+          "required": ["status"]
         }
       },
       {
@@ -865,10 +851,7 @@
               "description": "Time the lead was logged."
             }
           },
-          "required": [
-            "phone",
-            "name"
-          ]
+          "required": ["phone", "name"]
         }
       },
       {
@@ -925,9 +908,7 @@
               "description": "Backend-specific identifier for the appointment (Google Calendar event.id, CRM booking ID, etc.)."
             }
           },
-          "required": [
-            "appointment_id"
-          ]
+          "required": ["appointment_id"]
         }
       },
       {
@@ -955,9 +936,7 @@
               "description": "Optional reason for cancellation provided by the caller."
             }
           },
-          "required": [
-            "appointment_id"
-          ]
+          "required": ["appointment_id"]
         }
       }
     ],

@@ -1,95 +1,83 @@
 {
-    "name": "cancelAppointment",
-    "nodes": [
-        {
-            "id": "1",
-            "name": "Webhook In",
-            "type": "n8n-nodes-base.webhook",
-            "typeVersion": 1,
-            "position": [
-                250,
-                300
-            ],
-            "parameters": {
-                "httpMethod": "POST",
-                "path": "cancelAppointment",
-                "responseMode": "lastNode"
-            }
-        },
-        {
-            "id": "2",
-            "name": "Delete GCal Event",
-            "type": "n8n-nodes-base.googleCalendar",
-            "typeVersion": 1,
-            "position": [
-                550,
-                300
-            ],
-            "parameters": {
-                "operation": "delete",
-                "calendarId": "primary",
-                "eventId": "={{$json[\"appointment_id\"]}}"
-            },
-            "credentials": {
-                "googleApi": "Google API Account"
-            }
-        },
-        {
-            "id": "3",
-            "name": "Format Success",
-            "type": "n8n-nodes-base.function",
-            "typeVersion": 1,
-            "position": [
-                850,
-                300
-            ],
-            "parameters": {
-                "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Appointment cancelled successfully.',\n  data: {\n    appointment_id: $json.appointment_id,\n    reason: $json.reason || null\n  }\n}}];"
-            }
-        },
-        {
-            "id": "4",
-            "name": "Error Handler",
-            "type": "n8n-nodes-base.function",
-            "typeVersion": 1,
-            "position": [
-                850,
-                500
-            ],
-            "parameters": {
-                "functionCode": "return [{json: {\n  status: 'error',\n  message: 'Failed to cancel the appointment.',\n  data: $json\n}}];"
-            }
-        }
-    ],
-    "connections": {
-        "Webhook In": {
-            "main": [
-                [
-                    {
-                        "node": "Delete GCal Event",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Delete GCal Event": {
-            "main": [
-                [
-                    {
-                        "node": "Format Success",
-                        "type": "main",
-                        "index": 0
-                    }
-                ],
-                [
-                    {
-                        "node": "Error Handler",
-                        "type": "error",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+  "name": "cancelAppointment",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cancelAppointment",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Delete GCal Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [550, 300],
+      "parameters": {
+        "operation": "delete",
+        "calendarId": "primary",
+        "eventId": "={{$json[\"appointment_id\"]}}"
+      },
+      "credentials": {
+        "googleApi": "Google API Account"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Format Success",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Appointment cancelled successfully.',\n  data: {\n    appointment_id: $json.appointment_id,\n    reason: $json.reason || null\n  }\n}}];"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 500],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'Failed to cancel the appointment.',\n  data: $json\n}}];"
+      }
     }
+  ],
+  "connections": {
+    "Webhook In": {
+      "main": [
+        [
+          {
+            "node": "Delete GCal Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete GCal Event": {
+      "main": [
+        [
+          {
+            "node": "Format Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "error",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
 }

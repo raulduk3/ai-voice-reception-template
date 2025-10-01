@@ -67,9 +67,7 @@
   ],
   "connections": {
     "Webhook In": {
-      "main": [
-        [{ "node": "Append Row to Google Sheet", "type": "main", "index": 0 }]
-      ]
+      "main": [[{ "node": "Append Row to Google Sheet", "type": "main", "index": 0 }]]
     },
     "Append Row to Google Sheet": {
       "main": [

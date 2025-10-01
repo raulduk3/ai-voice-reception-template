@@ -1,10 +1,12 @@
 # Layer 7 AI Voice Receptionist Template 🤖
 
-A template repository for creating AI voice receptionist systems with PII protection and automated workflows. Fork this repo for each client deployment.
+A template repository for creating AI voice receptionist systems with PII protection and automated
+workflows. Fork this repo for each client deployment.
 
 ## 🚀 Build System
 
-This template includes an automated build system that processes configuration files from `src/` to `dist/` for production deployment to Retell AI and N8N.
+This template includes an automated build system that processes configuration files from `src/` to
+`dist/` for production deployment to Retell AI and N8N.
 
 ### Quick Start
 
@@ -39,7 +41,7 @@ npm run format
 │   │   └── modifyAppointment.json                      # Appointment modification
 │   └── secrets/                                         # Client-specific credentials (gitignored)
 ├── dist/                                                 # Optimized build output (ready for upload)
-├── .github/workflows/                                    # CI/CD automation  
+├── .github/workflows/                                    # CI/CD automation
 │   └── build-deploy.yml                                 # Build & release pipeline
 ├── build.js                                            # Build system engine
 ├── package.json                                         # Dependencies & scripts
@@ -51,7 +53,7 @@ npm run format
 
 **Fork this repository for each client deployment:**
 
-1. **Fork** → Create client-specific repository  
+1. **Fork** → Create client-specific repository
 2. **Customize** → Edit template variables in `src/` with business details
 3. **Build** → Run `npm run build` to generate `dist/` files
 4. **Deploy** → Upload optimized configs to Retell AI and N8N
@@ -60,13 +62,14 @@ npm run format
 
 The agent configuration uses these variables that need client-specific values:
 
-| Variable | Example | Location |
-|----------|---------|----------|
-| `{{agent_name}}` | "Myra" | Agent JSON, Core Prompt |
-| `{{business_name}}` | "Caroline Smith's Salon" | Agent JSON, Core Prompt |  
+| Variable               | Example                     | Location                |
+| ---------------------- | --------------------------- | ----------------------- |
+| `{{agent_name}}`       | "Myra"                      | Agent JSON, Core Prompt |
+| `{{business_name}}`    | "Caroline Smith's Salon"    | Agent JSON, Core Prompt |
 | `{{ai_support_hours}}` | "24/7" or "Mon-Fri 9am-6pm" | Agent JSON, Core Prompt |
 
 **N8N Workflow URLs** (in agent JSON tools section):
+
 - Update all webhook URLs to your N8N instance
 - Configure API endpoints for calendar/CRM integrations
 - Set up authentication headers and credentials
@@ -74,8 +77,9 @@ The agent configuration uses these variables that need client-specific values:
 ## 🔧 Build Features
 
 ### ✨ Optimization
+
 - **JSON Minification**: Removes whitespace and formatting from JSON files
-- **Markdown Formatting**: Standardizes markdown formatting 
+- **Markdown Formatting**: Standardizes markdown formatting
 - **Size Reduction**: Typically achieves 30-40% size reduction
 - **Build Analytics**: Detailed build statistics and file size reports
 
@@ -83,13 +87,13 @@ The agent configuration uses these variables that need client-specific values:
 
 The project includes GitHub Actions for automated builds and releases:
 
-1. **Build Stage**: 
+1. **Build Stage**:
    - Installs dependencies with `npm install`
    - Runs code formatting with Prettier
    - Builds optimized files with comprehensive scanning
    - Generates detailed build statistics
 
-2. **Release Stage**: 
+2. **Release Stage**:
    - Creates versioned GitHub releases
    - Bundles optimized files as release assets
    - Makes distributions available for download
@@ -103,19 +107,21 @@ The project includes GitHub Actions for automated builds and releases:
 ### 📊 Build Output
 
 The build process generates:
+
 - **Minified JSON files**: Production-ready configurations
 - **Formatted Markdown**: Standardized documentation
 - **Build info**: Detailed statistics in `dist/build-info.json`
 
 Example build info:
+
 ```json
 {
   "buildTime": "2025-10-01T14:35:17.236Z",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "stats": {
     "totalFiles": 11,
     "originalSize": "71.19 KB",
-    "processedSize": "45.63 KB", 
+    "processedSize": "45.63 KB",
     "totalReduction": "35.9%",
     "processingTime": "112ms"
   }
@@ -127,21 +133,24 @@ Example build info:
 ### Core Components
 
 #### 🤖 Retell Agent Configuration
+
 - **File**: `Layer 7 AI Voice Receptionist (POC) - Retell Agent.json`
 - **Purpose**: Main conversation flow and routing logic
-- **Features**: 
+- **Features**:
   - Multi-step conversation routing
   - Context-aware response handling
   - PII-safe query filtering
   - Tool integration for appointments
 
 #### 📝 Prompt Engineering
+
 - **Directory**: `prompts/`
 - **Core Prompt**: System instructions and personality
 - **RAG Prompt**: Secure information retrieval guidelines
 - **Security Focus**: Prevents data leakage and ensures compliance
 
 #### ⚙️ N8N Workflows
+
 - **Directory**: `n8n/`
 - **Functions**: Complete appointment lifecycle management
 - **Integrations**: External calendar systems, CRM tools
@@ -155,41 +164,42 @@ Based on the actual agent conversation flow:
 graph TD
     A[Incoming Call] --> B[Welcome Node]
     B --> C[Router Node]
-    
+
     C -->|General Question| D[Answer Question Node]
     C -->|Book Appointment| E[Gather Appointment Details]
     C -->|Modify/Cancel| F[Identify Appointment Node]
     C -->|Callback Request| G[Fallback/Log Lead Node]
-    
+
     D --> H[answerQuestion Tool]
     H -->|Success| I[End Call Confirmation]
     H -->|Failure| J[Q/A Fail Node]
-    
+
     E --> K[bookAppointment Tool]
     K -->|Success| I
     K -->|Invalid Data| L[Re-Verify Details]
     L --> K
-    
+
     F --> M[identifyAppointment Tool]
     M -->|Found| N[Cancel or Modify Node]
     M -->|Not Found/Multiple| F
-    
+
     N --> O[modifyAppointment Tool]
     N --> P[cancelAppointment Tool]
     O --> I
     P --> I
-    
+
     G --> Q[logLead Tool]
     Q --> R[Escalation Logic]
     R -->|Business Hours| S[Transfer Call]
     R -->|After Hours| G
-    
+
     I --> T[End Call]
     J --> C
     S --> U[Human Agent]
 ```
 
 **Key Features:**
+
 - **Welcome Flow**: Professional greeting with agent and business name
 - **Router-Based Routing**: Intelligent intent detection and conversation routing
 - **Multi-Factor Security**: Two-factor authentication for appointment access
@@ -199,34 +209,37 @@ graph TD
 ### 🛠️ Available Scripts
 
 #### Build & Development
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `npm run build` | Build optimized files | Production deployment |
-| `npm run clean` | Remove build artifacts | Clean slate rebuilds |
-| `npm run rebuild` | Clean + build | Complete refresh |
-| `npm run format` | Format all code | Code consistency |
-| `npm run format:check` | Check formatting | CI/CD validation |
+
+| Script                 | Purpose                | Usage                 |
+| ---------------------- | ---------------------- | --------------------- |
+| `npm run build`        | Build optimized files  | Production deployment |
+| `npm run clean`        | Remove build artifacts | Clean slate rebuilds  |
+| `npm run rebuild`      | Clean + build          | Complete refresh      |
+| `npm run format`       | Format all code        | Code consistency      |
+| `npm run format:check` | Check formatting       | CI/CD validation      |
 
 #### Version Management & Releases
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `npm run release:patch` | Release patch version (1.0.0 → 1.0.1) | Bug fixes, small updates |
+
+| Script                  | Purpose                               | Usage                      |
+| ----------------------- | ------------------------------------- | -------------------------- |
+| `npm run release:patch` | Release patch version (1.0.0 → 1.0.1) | Bug fixes, small updates   |
 | `npm run release:minor` | Release minor version (1.0.0 → 1.1.0) | New features, enhancements |
-| `npm run release:major` | Release major version (1.0.0 → 2.0.0) | Breaking changes |
-| `npm run version:patch` | Bump patch version only | Local version update |
-| `npm run version:minor` | Bump minor version only | Local version update |
-| `npm run version:major` | Bump major version only | Local version update |
+| `npm run release:major` | Release major version (1.0.0 → 2.0.0) | Breaking changes           |
+| `npm run version:patch` | Bump patch version only               | Local version update       |
+| `npm run version:minor` | Bump minor version only               | Local version update       |
+| `npm run version:major` | Bump major version only               | Local version update       |
 
 ### 📋 Release Management
 
 The template uses **semantic versioning** (SemVer) for clear version management:
 
 #### Creating Releases
+
 ```bash
 # For bug fixes and small improvements
 npm run release:patch
 
-# For new features and enhancements  
+# For new features and enhancements
 npm run release:minor
 
 # For breaking changes or major updates
@@ -234,6 +247,7 @@ npm run release:major
 ```
 
 #### Automatic Release Process
+
 1. **Validates** working directory is clean
 2. **Pulls** latest changes from main branch
 3. **Runs** build to ensure everything works
@@ -244,8 +258,9 @@ npm run release:major
 8. **Triggers** GitHub Actions to create release
 
 #### Version Strategy
+
 - **Patch** (x.x.1): Template bug fixes, prompt improvements, build system fixes
-- **Minor** (x.1.x): New conversation flows, additional N8N workflows, feature enhancements  
+- **Minor** (x.1.x): New conversation flows, additional N8N workflows, feature enhancements
 - **Major** (1.x.x): Breaking changes to template structure, major workflow updates
 
 ## 🛡️ Security Features
@@ -258,12 +273,14 @@ npm run release:major
 ## 🔗 Resources & Links
 
 ### 📁 Repository Access
+
 - **GitHub Repository**: https://github.com/raulduk3/layer7-ai-voice
 - **Latest Releases**: https://github.com/raulduk3/layer7-ai-voice/releases
 - **Build Artifacts**: Downloadable from releases
 - **Actions History**: https://github.com/raulduk3/layer7-ai-voice/actions
 
 ### 📊 Monitoring & Analytics
+
 - **Build Statistics**: Available in `dist/build-info.json`
 - **Performance Metrics**: File size reductions, processing times
 - **Release Tags**: Timestamped versions for tracking
@@ -278,24 +295,27 @@ npm run release:major
    - Clone your fork: `git clone https://github.com/yourusername/client-name-voice-ai.git`
 
 2. **Install Dependencies**:
+
    ```bash
    cd client-name-voice-ai
    npm install
    ```
 
 3. **Customize Configuration**:
+
    ```bash
    # Edit main agent config with client details
    nano src/Layer\ 7\ AI\ Voice\ Receptionist\ \(POC\)\ -\ Retell\ Agent.json
-   
+
    # Update business information in prompts
    nano src/prompts/Core\ Prompt.md
-   
-   # Configure N8N workflow endpoints 
+
+   # Configure N8N workflow endpoints
    nano src/n8n/bookAppointment.json  # (and other workflow files)
    ```
 
 4. **Build Optimized Files**:
+
    ```bash
    npm run build
    # Files ready for upload in dist/ folder
@@ -308,6 +328,7 @@ npm run release:major
 ### 🔧 Adding New Features
 
 #### Extending Build System
+
 The build system supports multiple file types and processing modes:
 
 1. **Add File Type Support**:
@@ -321,6 +342,7 @@ The build system supports multiple file types and processing modes:
    - Implement custom file transformations
 
 #### N8N Workflow Development
+
 1. **Create New Workflow**:
    - Design workflow in N8N interface
    - Export as JSON to `n8n/` directory
@@ -335,12 +357,12 @@ The build system supports multiple file types and processing modes:
 
 #### Common Issues
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Build fails | Malformed JSON | Check file syntax, use JSON validator |
-| CI/CD errors | Missing dependencies | Verify `package.json` and lock file |
-| Large file sizes | No optimization | Ensure Prettier is configured correctly |
-| Security warnings | PII exposure | Review router logic and prompts |
+| Issue             | Cause                | Solution                                |
+| ----------------- | -------------------- | --------------------------------------- |
+| Build fails       | Malformed JSON       | Check file syntax, use JSON validator   |
+| CI/CD errors      | Missing dependencies | Verify `package.json` and lock file     |
+| Large file sizes  | No optimization      | Ensure Prettier is configured correctly |
+| Security warnings | PII exposure         | Review router logic and prompts         |
 
 #### Debug Commands
 
@@ -361,6 +383,7 @@ npm run clean && npm run build
 ### ⚙️ Advanced Configuration
 
 #### Prettier Customization
+
 ```json
 {
   "semi": false,
@@ -372,6 +395,7 @@ npm run clean && npm run build
 ```
 
 #### Build Script Options
+
 - **Selective Processing**: Target specific directories
 - **Custom Exclusions**: Add to excluded directories list
 - **Performance Tuning**: Adjust processing batch sizes
@@ -379,15 +403,18 @@ npm run clean && npm run build
 ## 🔄 Maintaining Client Forks
 
 ### Syncing Template Updates
+
 When the template repository receives improvements:
 
 1. **Add Template Remote**:
+
    ```bash
    git remote add template https://github.com/raulduk3/layer7-voice-ai-receptionist.git
    git fetch template
    ```
 
 2. **Merge Updates**:
+
    ```bash
    git merge template/main
    # Resolve any conflicts with your client customizations
@@ -402,6 +429,7 @@ When the template repository receives improvements:
 ## 🤝 Contributing to Template
 
 ### Template Improvements
+
 Contributions to improve the base template are welcome:
 
 1. Fork this template repository
@@ -412,23 +440,25 @@ Contributions to improve the base template are welcome:
 ## 📚 Additional Resources
 
 ### � Related Documentation
+
 - [Retell AI Documentation](https://docs.retellai.com/)
 - [N8N Workflow Documentation](https://docs.n8n.io/)
 - [Prettier Configuration Guide](https://prettier.io/docs/en/configuration.html)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 
 ### 🛟 Support & Community
+
 - **Issues**: [GitHub Issues](https://github.com/raulduk3/layer7-ai-voice/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/raulduk3/layer7-ai-voice/discussions)
 - **Wiki**: [Project Wiki](https://github.com/raulduk3/layer7-ai-voice/wiki)
 
-
 ## 🏷️ Version History
 
-See [Releases](https://github.com/raulduk3/layer7-ai-voice/releases) for detailed changelog and version history.
+See [Releases](https://github.com/raulduk3/layer7-ai-voice/releases) for detailed changelog and
+version history.
 
 ---
 
 **Built with ❤️ for secure, efficient AI voice reception systems.**
 
-*Last updated: October 2025 | Version 1.0.0*
+_Last updated: October 2025 | Version 1.0.0_

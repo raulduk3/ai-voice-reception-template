@@ -5,11 +5,12 @@
 To customize your AI voice receptionist for your business:
 
 ### Option 1: Edit config.json (Recommended)
+
 ```json
 {
   "business": {
     "name": "Your Business Name",
-    "agent_name": "Your Business AI Voice Receptionist", 
+    "agent_name": "Your Business AI Voice Receptionist",
     "ai_support_hours": "Monday-Friday 9AM-6PM"
   },
   "infrastructure": {
@@ -28,6 +29,7 @@ To customize your AI voice receptionist for your business:
 ```
 
 ### Option 2: Auto-generate from Repository Name
+
 1. Name your repository with your business (e.g., `acme-salon-voice-ai`)
 2. Set `"auto_generate_from_repo": true` in config.json
 3. The system will automatically generate business names
@@ -37,25 +39,29 @@ To customize your AI voice receptionist for your business:
 The build system updates these specific build-time configuration fields:
 
 ### Business Identity
+
 - `agent_name` - The main agent identifier in Retell
 - `default_dynamic_variables.agent_name` - Agent name for Retell's templating system
-- `default_dynamic_variables.business_name` - Business name for Retell's templating system  
+- `default_dynamic_variables.business_name` - Business name for Retell's templating system
 - `default_dynamic_variables.ai_support_hours` - Support hours for Retell's templating system
 
-### Infrastructure & Deployment  
+### Infrastructure & Deployment
+
 - `tools[].url` - All webhook URLs for n8n integration endpoints
 - `transfer_destination.number` - Phone number for human handoff
 
 ### Voice & Call Settings
+
 - `voice_id` - ElevenLabs voice selection (e.g., "11labs-Adrian", "11labs-Cimo")
-- `max_call_duration_ms` - Maximum call length in milliseconds  
+- `max_call_duration_ms` - Maximum call length in milliseconds
 - `interruption_sensitivity` - How easily caller can interrupt (0.1-1.0)
 
 ### File Names
+
 - `{{agent_name}} - Retell Agent.json` → `Your Business AI Voice Receptionist - Retell Agent.json`
 - `prompts/{{business_name}} Core Prompt.md` → `prompts/Your Business Core Prompt.md`
 
-## What Stays As Retell Dynamic Variables  
+## What Stays As Retell Dynamic Variables
 
 These use Retell's runtime templating system ({{variable_name}}) and are NOT replaced at build time:
 
@@ -71,14 +77,16 @@ npm run build
 ```
 
 Generated files in `dist/` folder will have:
+
 - Proper agent names
-- Configured dynamic variables  
+- Configured dynamic variables
 - Business-specific file names
 - All ready for Retell.ai deployment
 
 ## Examples
 
 ### Salon Configuration
+
 ```json
 {
   "business": {
@@ -89,7 +97,8 @@ Generated files in `dist/` folder will have:
 }
 ```
 
-### Dental Office Configuration  
+### Dental Office Configuration
+
 ```json
 {
   "business": {
@@ -101,10 +110,11 @@ Generated files in `dist/` folder will have:
 ```
 
 ### Restaurant Configuration
+
 ```json
 {
   "business": {
-    "name": "Mario's Italian Kitchen", 
+    "name": "Mario's Italian Kitchen",
     "agent_display_name": "Mario's Italian Kitchen AI Host",
     "agent_human_name": "Maria",
     "ai_support_hours": "Daily 11AM-10PM"
@@ -114,7 +124,8 @@ Generated files in `dist/` folder will have:
 
 ## Adding Custom Dynamic Variables
 
-You can add your own dynamic variables that will be available as `{{your_variable}}` in all Retell prompts and conversation flows.
+You can add your own dynamic variables that will be available as `{{your_variable}}` in all Retell
+prompts and conversation flows.
 
 ### Step 1: Add Variables to config.json
 
@@ -144,10 +155,10 @@ If you need special processing for your variables, update the `processRetellAgen
 ```javascript
 // In build.js, add to processRetellAgentTemplate method:
 if (dynVars.location_address !== undefined) {
-    dynVars.location_address = this.templateVariables.location_address;
+  dynVars.location_address = this.templateVariables.location_address;
 }
 if (dynVars.phone_number !== undefined) {
-    dynVars.phone_number = this.templateVariables.phone_number;
+  dynVars.phone_number = this.templateVariables.phone_number;
 }
 // ... add more as needed
 ```
@@ -158,19 +169,21 @@ Your custom variables will be automatically available in all prompts:
 
 ```markdown
 ## Business Information
+
 - Location: {{location_address}}
-- Phone: {{phone_number}}  
+- Phone: {{phone_number}}
 - Website: {{website}}
 - Parking: {{parking_info}}
 - Special Hours: {{special_hours}}
 
-When callers ask about our location, tell them: 
-"We're located at {{location_address}}, and {{parking_info}}"
+When callers ask about our location, tell them: "We're located at {{location_address}}, and
+{{parking_info}}"
 ```
 
 ### Common Use Cases
 
 #### Service Business
+
 ```json
 "dynamic_variables": {
   "service_area": "Downtown and surrounding neighborhoods",
@@ -180,17 +193,19 @@ When callers ask about our location, tell them:
 }
 ```
 
-#### Medical Practice  
+#### Medical Practice
+
 ```json
 "dynamic_variables": {
   "office_location": "Medical Plaza, Suite 200",
-  "after_hours_number": "(555) 123-URGENT", 
+  "after_hours_number": "(555) 123-URGENT",
   "insurance_info": "We accept most major insurance plans",
   "new_patient_info": "New patients welcome, please bring ID and insurance card"
 }
 ```
 
 #### Restaurant
+
 ```json
 "dynamic_variables": {
   "reservation_policy": "Reservations recommended for parties of 4 or more",

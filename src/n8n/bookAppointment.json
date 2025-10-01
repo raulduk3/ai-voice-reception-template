@@ -1,124 +1,109 @@
 {
-    "name": "bookAppointment",
-    "nodes": [
-        {
-            "id": "1",
-            "name": "Webhook In",
-            "type": "n8n-nodes-base.webhook",
-            "typeVersion": 1,
-            "position": [
-                250,
-                300
-            ],
-            "parameters": {
-                "httpMethod": "POST",
-                "path": "bookAppointment",
-                "responseMode": "lastNode"
-            }
-        },
-        {
-            "id": "2",
-            "name": "Validate Input",
-            "type": "n8n-nodes-base.function",
-            "typeVersion": 1,
-            "position": [
-                500,
-                300
-            ],
-            "parameters": {
-                "functionCode": "const required = ['name','service','date','time','phone'];\nlet missing = [];\nfor (const f of required) {\n  if (!items[0].json[f]) missing.push(f);\n}\nif (missing.length) {\n  return [{json: {\n    status: 'failure',\n    message: 'Missing required fields.',\n    missing_fields: missing,\n    data: items[0].json\n  }}];\n}\nreturn items;"
-            }
-        },
-        {
-            "id": "3",
-            "name": "Create GCal Event",
-            "type": "n8n-nodes-base.googleCalendar",
-            "typeVersion": 1,
-            "position": [
-                750,
-                300
-            ],
-            "parameters": {
-                "operation": "create",
-                "calendarId": "primary",
-                "start": "={{$json[\"date\"] + \"T\" + $json[\"time\"] + \":00\"}}",
-                "end": "={{$json[\"date\"] + \"T\" + $json[\"time\"] + \":00\"}}",
-                "additionalFields": {
-                    "summary": "={{$json[\"service\"]}} appointment for {{$json[\"name\"]}}",
-                    "description": "Phone: {{$json[\"phone\"]}}. Notes: {{$json[\"notes\"] || \"\"}}. Email: {{$json[\"email\"] || \"\"}}"
-                }
-            },
-            "credentials": {
-                "googleApi": "Google API Account"
-            }
-        },
-        {
-            "id": "4",
-            "name": "Return Success",
-            "type": "n8n-nodes-base.function",
-            "typeVersion": 1,
-            "position": [
-                1000,
-                300
-            ],
-            "parameters": {
-                "functionCode": "return [{json: {\n  status: 'success',\n  data: {\n    appointment_id: items[0].json.id,\n    name: $json.name,\n    service: $json.service,\n    date: $json.date,\n    time: $json.time,\n    phone: $json.phone,\n    email: $json.email || null,\n    notes: $json.notes || null\n  }\n}}];"
-            }
-        },
-        {
-            "id": "5",
-            "name": "Error Handler",
-            "type": "n8n-nodes-base.function",
-            "typeVersion": 1,
-            "position": [
-                1000,
-                500
-            ],
-            "parameters": {
-                "functionCode": "return [{json: {\n  status: 'error',\n  message: $json.message || 'Unknown error occurred while booking appointment.',\n  data: $json\n}}];"
-            }
+  "name": "bookAppointment",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bookAppointment",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "parameters": {
+        "functionCode": "const required = ['name','service','date','time','phone'];\nlet missing = [];\nfor (const f of required) {\n  if (!items[0].json[f]) missing.push(f);\n}\nif (missing.length) {\n  return [{json: {\n    status: 'failure',\n    message: 'Missing required fields.',\n    missing_fields: missing,\n    data: items[0].json\n  }}];\n}\nreturn items;"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Create GCal Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "parameters": {
+        "operation": "create",
+        "calendarId": "primary",
+        "start": "={{$json[\"date\"] + \"T\" + $json[\"time\"] + \":00\"}}",
+        "end": "={{$json[\"date\"] + \"T\" + $json[\"time\"] + \":00\"}}",
+        "additionalFields": {
+          "summary": "={{$json[\"service\"]}} appointment for {{$json[\"name\"]}}",
+          "description": "Phone: {{$json[\"phone\"]}}. Notes: {{$json[\"notes\"] || \"\"}}. Email: {{$json[\"email\"] || \"\"}}"
         }
-    ],
-    "connections": {
-        "Webhook In": {
-            "main": [
-                [
-                    {
-                        "node": "Validate Input",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Validate Input": {
-            "main": [
-                [
-                    {
-                        "node": "Create GCal Event",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Create GCal Event": {
-            "main": [
-                [
-                    {
-                        "node": "Return Success",
-                        "type": "main",
-                        "index": 0
-                    }
-                ],
-                [
-                    {
-                        "node": "Error Handler",
-                        "type": "error",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+      },
+      "credentials": {
+        "googleApi": "Google API Account"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Return Success",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 300],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'success',\n  data: {\n    appointment_id: items[0].json.id,\n    name: $json.name,\n    service: $json.service,\n    date: $json.date,\n    time: $json.time,\n    phone: $json.phone,\n    email: $json.email || null,\n    notes: $json.notes || null\n  }\n}}];"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1000, 500],
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'error',\n  message: $json.message || 'Unknown error occurred while booking appointment.',\n  data: $json\n}}];"
+      }
     }
+  ],
+  "connections": {
+    "Webhook In": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Create GCal Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create GCal Event": {
+      "main": [
+        [
+          {
+            "node": "Return Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Handler",
+            "type": "error",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
 }

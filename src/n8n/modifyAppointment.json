@@ -1,111 +1,99 @@
 {
-    "name": "Modify Appointment (Template)",
-    "nodes": [
-        {
-            "parameters": {
-                "path": "modifyAppointment",
-                "options": {}
-            },
-            "id": "1",
-            "name": "Webhook Trigger",
-            "type": "n8n-nodes-base.webhook",
-            "typeVersion": 1,
-            "position": [
-                250,
-                300
-            ],
-            "webhookDescription": "Triggered by Retell agent"
-        },
-        {
-            "parameters": {
-                "calendarId": "primary",
-                "eventId": "={{$json[\"appointment_id\"]}}",
-                "updateFields": {
-                    "summary": "={{$json[\"updates\"][\"new_service\"] || undefined}}",
-                    "description": "={{$json[\"updates\"][\"notes\"] || undefined}}",
-                    "start": "={{$json[\"updates\"][\"new_date\"] ? $json[\"updates\"][\"new_date\"] + \"T\" + ($json[\"updates\"][\"new_time\"] || \"00:00\") + \":00\" : undefined}}",
-                    "end": "={{$json[\"updates\"][\"new_date\"] ? $json[\"updates\"][\"new_date\"] + \"T\" + ($json[\"updates\"][\"new_time\"] || \"00:00\") + \":00\" : undefined}}"
-                }
-            },
-            "id": "2",
-            "name": "Google Calendar - Update Event",
-            "type": "n8n-nodes-base.googleCalendar",
-            "typeVersion": 1,
-            "position": [
-                500,
-                200
-            ],
-            "credentials": {
-                "googleApi": "YOUR_GOOGLE_API_CREDENTIAL"
-            }
-        },
-        {
-            "parameters": {
-                "operation": "append",
-                "sheetId": "YOUR_SHEET_ID",
-                "range": "AppointmentChanges!A:E",
-                "values": "={{[$json[\"appointment_id\"], $json[\"updates\"][\"new_date\"] || \"\", $json[\"updates\"][\"new_time\"] || \"\", $json[\"updates\"][\"new_service\"] || \"\", $json[\"updates\"][\"notes\"] || \"\"]}}"
-            },
-            "id": "3",
-            "name": "Google Sheets - Log Modification",
-            "type": "n8n-nodes-base.googleSheets",
-            "typeVersion": 1,
-            "position": [
-                750,
-                200
-            ],
-            "credentials": {
-                "googleSheetsOAuth2Api": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
-            }
-        },
-        {
-            "parameters": {
-                "responseMode": "lastNode",
-                "responseData": "={{ { \"status\": \"success\", \"appointment_id\": $json[\"id\"], \"confirmation\": \"Appointment \" + $json[\"id\"] + \" updated.\" } }}"
-            },
-            "id": "4",
-            "name": "Respond to Retell",
-            "type": "n8n-nodes-base.respondToWebhook",
-            "typeVersion": 1,
-            "position": [
-                1000,
-                200
-            ]
+  "name": "Modify Appointment (Template)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "modifyAppointment",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookDescription": "Triggered by Retell agent"
+    },
+    {
+      "parameters": {
+        "calendarId": "primary",
+        "eventId": "={{$json[\"appointment_id\"]}}",
+        "updateFields": {
+          "summary": "={{$json[\"updates\"][\"new_service\"] || undefined}}",
+          "description": "={{$json[\"updates\"][\"notes\"] || undefined}}",
+          "start": "={{$json[\"updates\"][\"new_date\"] ? $json[\"updates\"][\"new_date\"] + \"T\" + ($json[\"updates\"][\"new_time\"] || \"00:00\") + \":00\" : undefined}}",
+          "end": "={{$json[\"updates\"][\"new_date\"] ? $json[\"updates\"][\"new_date\"] + \"T\" + ($json[\"updates\"][\"new_time\"] || \"00:00\") + \":00\" : undefined}}"
         }
-    ],
-    "connections": {
-        "Webhook Trigger": {
-            "main": [
-                [
-                    {
-                        "node": "Google Calendar - Update Event",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Google Calendar - Update Event": {
-            "main": [
-                [
-                    {
-                        "node": "Google Sheets - Log Modification",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        },
-        "Google Sheets - Log Modification": {
-            "main": [
-                [
-                    {
-                        "node": "Respond to Retell",
-                        "type": "main",
-                        "index": 0
-                    }
-                ]
-            ]
-        }
+      },
+      "id": "2",
+      "name": "Google Calendar - Update Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [500, 200],
+      "credentials": {
+        "googleApi": "YOUR_GOOGLE_API_CREDENTIAL"
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "YOUR_SHEET_ID",
+        "range": "AppointmentChanges!A:E",
+        "values": "={{[$json[\"appointment_id\"], $json[\"updates\"][\"new_date\"] || \"\", $json[\"updates\"][\"new_time\"] || \"\", $json[\"updates\"][\"new_service\"] || \"\", $json[\"updates\"][\"notes\"] || \"\"]}}"
+      },
+      "id": "3",
+      "name": "Google Sheets - Log Modification",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [750, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+      }
+    },
+    {
+      "parameters": {
+        "responseMode": "lastNode",
+        "responseData": "={{ { \"status\": \"success\", \"appointment_id\": $json[\"id\"], \"confirmation\": \"Appointment \" + $json[\"id\"] + \" updated.\" } }}"
+      },
+      "id": "4",
+      "name": "Respond to Retell",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 200]
     }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar - Update Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Calendar - Update Event": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Log Modification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Log Modification": {
+      "main": [
+        [
+          {
+            "node": "Respond to Retell",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
 }

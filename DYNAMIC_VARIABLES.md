@@ -2,7 +2,8 @@
 
 ## Quick Setup
 
-Dynamic variables allow you to customize what your AI agent says during conversations. Any variable you add will be available as `{{variable_name}}` in all Retell prompts.
+Dynamic variables allow you to customize what your AI agent says during conversations. Any variable
+you add will be available as `{{variable_name}}` in all Retell prompts.
 
 ## Adding Dynamic Variables
 
@@ -30,15 +31,16 @@ Dynamic variables allow you to customize what your AI agent says during conversa
 Your variables automatically work in any Retell prompt:
 
 ```markdown
-## Business Information  
+## Business Information
+
 - Phone: {{phone_number}}
 - Address: {{address}}
 - Website: {{website}}
 - Hours: {{hours}}
 - Parking: {{parking}}
 
-When asked about our location, say:
-"We're located at {{address}}. {{parking}}. You can visit our website at {{website}} or call us at {{phone_number}}."
+When asked about our location, say: "We're located at {{address}}. {{parking}}. You can visit our
+website at {{website}} or call us at {{phone_number}}."
 ```
 
 ### 3. Build and Deploy
@@ -48,16 +50,18 @@ npm run build
 ```
 
 All your dynamic variables are automatically:
+
 - ✅ Added to the Retell agent configuration
-- ✅ Available as `{{variable_name}}` in prompts  
+- ✅ Available as `{{variable_name}}` in prompts
 - ✅ Ready for use in conversations
 
 ## Common Examples
 
 ### Service Business
+
 ```json
 "dynamic_variables": {
-  "service_area": "Downtown and surrounding areas",  
+  "service_area": "Downtown and surrounding areas",
   "response_time": "Usually within 2 hours",
   "payment_methods": "Cash, card, and digital payments",
   "emergency_contact": "(555) 999-HELP"
@@ -65,16 +69,18 @@ All your dynamic variables are automatically:
 ```
 
 ### Medical Practice
+
 ```json
 "dynamic_variables": {
   "office_hours": "Monday-Friday 8AM-6PM, Saturday 9AM-2PM",
-  "after_hours": "Call (555) 123-URGENT for emergencies", 
+  "after_hours": "Call (555) 123-URGENT for emergencies",
   "insurance": "We accept most major insurance plans",
   "new_patients": "New patients welcome - bring ID and insurance card"
 }
 ```
 
-### Restaurant  
+### Restaurant
+
 ```json
 "dynamic_variables": {
   "cuisine_type": "Authentic Italian cuisine",
@@ -95,6 +101,7 @@ All your dynamic variables are automatically:
 ## Advanced Usage
 
 ### Conditional Content
+
 ```json
 "dynamic_variables": {
   "seasonal_promotion": "Summer special: 20% off lawn services",
@@ -104,13 +111,15 @@ All your dynamic variables are automatically:
 ```
 
 ### Contact Information
+
 ```json
 "dynamic_variables": {
   "main_phone": "(555) 123-MAIN",
-  "text_line": "(555) 123-TEXT", 
+  "text_line": "(555) 123-TEXT",
   "email": "hello@yourbusiness.com",
   "social_media": "Follow us @YourBusiness on Instagram"
 }
 ```
 
-That's it! Your AI agent will automatically use these variables in conversations, making it easy to keep information current and consistent across all customer interactions.
+That's it! Your AI agent will automatically use these variables in conversations, making it easy to
+keep information current and consistent across all customer interactions.
