@@ -1,6 +1,6 @@
 {
   "name": "ai-voice-reception-template",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Professional AI voice receptionist template with intelligent templating system",
   "main": "index.js",
   "scripts": {
