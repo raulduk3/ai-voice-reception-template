@@ -33,7 +33,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Analyze the caller's intent and route the conversation to the appropriate node based on their request."
+          "text": "Analyze the caller's intent and route the conversation to the appropriate node based on their request. Respond contextually based on user conversation history and prior actions."
         },
         "name": "Router",
         "edges": [
@@ -535,7 +535,7 @@
         },
         "instruction": {
           "type": "prompt",
-          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel. **SECURITY REQUIREMENT: You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller.**"
+          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel. SECURITY REQUIREMENT: You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller."
         },
         "knowledge_base_ids": []
       },
