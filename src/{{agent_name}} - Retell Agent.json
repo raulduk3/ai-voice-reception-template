@@ -1,12 +1,12 @@
 {
   "agent_id": "",
   "channel": "voice",
-  "last_modification_timestamp": 1759306330767,
+  "last_modification_timestamp": 1759530825405,
   "agent_name": "{{agent_name}}",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
-    "conversation_flow_id": "conversation_flow_c485db084c84"
+    "conversation_flow_id": "conversation_flow_9cd0561c9a21"
   },
   "language": "en-US",
   "opt_out_sensitive_data_storage": false,
@@ -26,14 +26,14 @@
   "user_dtmf_options": {},
   "retellLlmData": null,
   "conversationFlow": {
-    "conversation_flow_id": "conversation_flow_c485db084c84",
+    "conversation_flow_id": "conversation_flow_9cd0561c9a21",
     "version": 0,
     "global_prompt": "",
     "nodes": [
       {
         "instruction": {
           "type": "prompt",
-          "text": "Analyze the caller's intent and route the conversation to the appropriate node based on their request. Respond contextually based on user conversation history and prior actions."
+          "text": "Analyze the caller's intent and route the conversation to the appropriate node based on their request. Respond contextually."
         },
         "name": "Router",
         "edges": [
@@ -58,7 +58,7 @@
             "id": "edge-1",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller expresses intent to schedule a new appointment."
+              "prompt": "Caller requests to schedule a new appointment."
             }
           },
           {
@@ -107,22 +107,26 @@
         },
         "start_speaker": "agent",
         "id": "start-node-1759266611426",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
           "x": 777,
-          "y": 1781
-        },
-        "knowledge_base_ids": []
+          "y": 2365
+        }
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Provide accurate and helpful responses to the caller's questions using available knowledge base information."
+        },
         "name": "Answer Question",
         "edges": [
           {
-            "destination_node_id": "start-node-1759266611426",
-            "id": "edge-1759267974537",
+            "destination_node_id": "node-1759288307521",
+            "id": "edge-1759754099768",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller's question has been successfully answered and they are satisfied with the response."
+              "prompt": "Caller's question requires contextual or real-time company information beyond the scope of the knowledge base."
             }
           },
           {
@@ -132,19 +136,23 @@
               "type": "prompt",
               "prompt": "Caller disputes the provided answer or the knowledge base lacks sufficient information to address their inquiry."
             }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759267974537",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller's question has been successfully answered and they are satisfied with the response."
+            }
           }
         ],
         "id": "node-1759267476271",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
           "x": 1277,
-          "y": 1245
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Provide accurate and helpful responses to the caller's questions using available knowledge base information."
-        },
-        "knowledge_base_ids": []
+          "y": 1033
+        }
       },
       {
         "instruction": {
@@ -182,20 +190,20 @@
           "condition": "Caller requests callback assistance or system encounters an error requiring human intervention for resolution."
         },
         "id": "node-1759267848412",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 2777,
-          "y": 1625
-        },
-        "knowledge_base_ids": []
+          "x": 3277,
+          "y": 2238
+        }
       },
       {
         "name": "End Call",
         "id": "node-1759285139512",
         "type": "end",
         "display_position": {
-          "x": 4277,
-          "y": 2509
+          "x": 4777,
+          "y": 3219
         },
         "instruction": {
           "type": "prompt",
@@ -228,12 +236,16 @@
         },
         "type": "transfer_call",
         "display_position": {
-          "x": 3777,
-          "y": 2323
+          "x": 4277,
+          "y": 3029
         }
       },
       {
-        "name": "Gather Appointment Details",
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect all necessary appointment information from the caller to execute the bookAppointment action successfully."
+        },
+        "name": "Gather New Appointment Details",
         "edges": [
           {
             "destination_node_id": "node-1759287172272",
@@ -253,16 +265,12 @@
           }
         ],
         "id": "node-1759285368491",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 1796.4800853708648,
-          "y": 350.8406829669184
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Collect all necessary appointment information from the caller to execute the bookAppointment action successfully."
-        },
-        "knowledge_base_ids": []
+          "x": 2277,
+          "y": 219
+        }
       },
       {
         "name": "Escalation Logic",
@@ -287,8 +295,8 @@
         },
         "type": "branch",
         "display_position": {
-          "x": 3277,
-          "y": 2142
+          "x": 3777,
+          "y": 2816
         }
       },
       {
@@ -325,12 +333,16 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 2277,
-          "y": 242
+          "x": 2777,
+          "y": 274
         },
         "wait_for_result": true
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Address any invalid appointment details that caused the booking failure and collect corrected information from the caller to resolve the identified errors or constraints."
+        },
         "name": "Re-Verify Appointment Details",
         "edges": [
           {
@@ -359,16 +371,12 @@
           }
         ],
         "id": "node-1759287611013",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 2777,
+          "x": 3277,
           "y": 0
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Address any invalid appointment details that caused the booking failure and collect corrected information from the caller to resolve the identified errors or constraints."
-        },
-        "knowledge_base_ids": []
+        }
       },
       {
         "tool_id": "tool-1759288305078",
@@ -395,7 +403,7 @@
             "id": "edge-1759294859184",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "A system error occurred during question processing."
+              "prompt": "Error"
             }
           }
         ],
@@ -405,7 +413,7 @@
         "speak_during_execution": false,
         "display_position": {
           "x": 1777,
-          "y": 1520
+          "y": 1432
         },
         "wait_for_result": true
       },
@@ -437,12 +445,12 @@
           "condition": "Caller indicates readiness to conclude the conversation and end the call."
         },
         "id": "node-1759289883915",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 3777,
-          "y": 166
-        },
-        "knowledge_base_ids": []
+          "x": 4277,
+          "y": 190
+        }
       },
       {
         "tool_id": "tool-1759295546196",
@@ -457,7 +465,7 @@
             }
           },
           {
-            "destination_node_id": "node-1759289883915",
+            "destination_node_id": "node-1759267848412",
             "id": "edge-1759301979878",
             "transition_condition": {
               "type": "prompt",
@@ -470,12 +478,16 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 3277,
-          "y": 242
+          "x": 3777,
+          "y": 274
         },
         "wait_for_result": true
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Acknowledge that the system cannot provide an answer to the caller's question and offer alternative assistance."
+        },
         "name": "Q/A Fail",
         "edges": [
           {
@@ -496,18 +508,18 @@
           }
         ],
         "id": "node-1759298254864",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
           "x": 2277,
-          "y": 1662
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Acknowledge that the system cannot provide an answer to the caller's question and offer alternative assistance."
-        },
-        "knowledge_base_ids": []
+          "y": 2023
+        }
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel.  You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller."
+        },
         "name": "Identify Appointment",
         "edges": [
           {
@@ -528,16 +540,12 @@
           }
         ],
         "id": "node-1759299298668",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 1767.2599573145676,
-          "y": 1091.0243244092862
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel. SECURITY REQUIREMENT: You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller."
-        },
-        "knowledge_base_ids": []
+          "x": 1277,
+          "y": 1635
+        }
       },
       {
         "tool_id": "tool-1759299574542",
@@ -573,12 +581,16 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 2271.1559743887406,
-          "y": 1087.3761024450378
+          "x": 1777,
+          "y": 1774
         },
         "wait_for_result": true
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Using the identified appointment information, prepare to execute the requested modification or cancellation action while ensuring all required parameters are properly fulfilled."
+        },
         "name": "Cancel or Modify Existing Appointment",
         "edges": [
           {
@@ -607,16 +619,12 @@
           }
         ],
         "id": "node-1759299860372",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 2777,
-          "y": 755
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Using the identified appointment information, prepare to execute the requested modification or cancellation action while ensuring all required parameters are properly fulfilled."
-        },
-        "knowledge_base_ids": []
+          "x": 2277,
+          "y": 751
+        }
       },
       {
         "tool_id": "tool-1759300315801",
@@ -631,7 +639,7 @@
             }
           },
           {
-            "destination_node_id": "node-1759289883915",
+            "destination_node_id": "node-1759267848412",
             "id": "edge-1759302058185",
             "transition_condition": {
               "type": "prompt",
@@ -644,8 +652,8 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 3277,
-          "y": 540
+          "x": 2777,
+          "y": 874
         },
         "wait_for_result": true
       },
@@ -662,7 +670,7 @@
             }
           },
           {
-            "destination_node_id": "node-1759289883915",
+            "destination_node_id": "node-1759267848412",
             "id": "edge-1759302005400",
             "transition_condition": {
               "type": "prompt",
@@ -675,12 +683,16 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 3277,
-          "y": 838
+          "x": 2777,
+          "y": 1315
         },
         "wait_for_result": true
       },
       {
+        "instruction": {
+          "type": "prompt",
+          "text": "Provide a professional and welcoming greeting that includes your name, the business name, appropriate time-based salutation, and express genuine interest in assisting the caller.\n{{agent_name}}\n{{business_name}}"
+        },
         "name": "Welcome",
         "edges": [
           {
@@ -701,16 +713,12 @@
           }
         ],
         "id": "node-1759303421427",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
           "x": 277,
-          "y": 2361
-        },
-        "instruction": {
-          "type": "prompt",
-          "text": "Provide a professional and welcoming greeting that includes your name, the business name, appropriate time-based salutation, and express genuine interest in assisting the caller.\n{{agent_name}}\n{{business_name}}"
-        },
-        "knowledge_base_ids": []
+          "y": 3063
+        }
       }
     ],
     "start_node_id": "node-1759303421427",
@@ -765,6 +773,29 @@
         "method": "POST",
         "query_params": {},
         "description": "Answers a question using a RAG agent.",
+        "response_format": {
+          "type": "object",
+          "properties": {
+            "next_action": {
+              "type": "string",
+              "description": "Suggested next action for handling the request (optional)"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for failure or error (optional)"
+            },
+            "answer": {
+              "type": "string",
+              "description": "The response to the caller's question (only for success status)"
+            },
+            "status": {
+              "type": "string",
+              "description": "Status of the query processing",
+              "enum": ["success", "failure", "error"]
+            }
+          },
+          "required": ["status"]
+        },
         "type": "custom",
         "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
         "tool_id": "tool-1759288305078",
@@ -785,29 +816,6 @@
             }
           },
           "required": ["question"]
-        },
-        "response_format": {
-          "type": "object",
-          "properties": {
-            "status": {
-              "type": "string",
-              "enum": ["success", "failure", "error"],
-              "description": "Status of the query processing"
-            },
-            "answer": {
-              "type": "string",
-              "description": "The response to the caller's question (only for success status)"
-            },
-            "reason": {
-              "type": "string",
-              "description": "Reason for failure or error (optional)"
-            },
-            "next_action": {
-              "type": "string",
-              "description": "Suggested next action for handling the request (optional)"
-            }
-          },
-          "required": ["status"]
         }
       },
       {
@@ -828,7 +836,7 @@
           "properties": {
             "name": {
               "type": "string",
-              "description": "Caller\u2019s full name, if provided."
+              "description": "Caller’s full name, if provided."
             },
             "service_interest": {
               "type": "string",
@@ -840,11 +848,11 @@
             },
             "phone": {
               "type": "string",
-              "description": "Caller\u2019s phone number, if provided."
+              "description": "Caller’s phone number, if provided."
             },
             "email": {
               "type": "string",
-              "description": "Caller\u2019s email address, if provided."
+              "description": "Caller’s email address, if provided."
             },
             "timestamp": {
               "type": "string",
@@ -876,7 +884,7 @@
             },
             "query": {
               "type": "string",
-              "description": "Caller\u2019s natural language description of the appointment they want to modify or cancel."
+              "description": "Caller’s natural language description of the appointment they want to modify or cancel."
             }
           },
           "required": []
@@ -945,7 +953,7 @@
       "model": "gpt-4.1"
     },
     "default_dynamic_variables": {
-      "agent_human_name": "Myra",
+      "agent_name": "Myra",
       "ai_support_hours": "24/7",
       "business_name": "Caroline Smith's Salon"
     },
@@ -956,7 +964,7 @@
     },
     "begin_tag_display_position": {
       "x": 0,
-      "y": 2523
+      "y": 3233
     },
     "is_published": false
   },
