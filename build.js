@@ -135,50 +135,39 @@ class LayerBuilder {
       const packageJson = JSON.parse(await fs.readFile("package.json", "utf8"));
 
       // Set up template variables based on config or auto-generation
+      const buildDate = new Date().toISOString();
       if (config.templating?.auto_generate_from_repo !== false) {
         const repoName = packageJson.name || "ai-voice-receptionist";
-        const businessName =
-          config.business?.name || this.generateBusinessName(repoName);
-
+        const businessName = config.business?.name || this.generateBusinessName(repoName);
         this.templateVariables = {
+          build_date: buildDate,
+          today: new Date().toLocaleDateString(),
           repository_name: repoName,
           version: packageJson.version || "1.0.0",
           business_name: config.business?.name || businessName,
-          agent_display_name:
-            config.business?.agent_display_name ||
-            `${businessName} AI Voice Receptionist`,
-          agent_human_name:
-            config.business?.agent_human_name || businessName.split(" ")[0],
+          agent_display_name: config.business?.agent_display_name || `${businessName} AI Voice Receptionist`,
+          agent_human_name: config.business?.agent_human_name || businessName.split(" ")[0],
           ai_support_hours: config.business?.ai_support_hours || "24/7",
-          transfer_phone_number:
-            config.infrastructure?.transfer_phone_number || "+1234567890",
+          transfer_phone_number: config.infrastructure?.transfer_phone_number || "+1234567890",
           voice_id: config.voice_settings?.voice_id || "11labs-Cimo",
-          max_call_duration_ms:
-            config.voice_settings?.max_call_duration_ms || 600000,
-          interruption_sensitivity:
-            config.voice_settings?.interruption_sensitivity || 0.9,
-          // Add any custom dynamic variables from config
+          max_call_duration_ms: config.voice_settings?.max_call_duration_ms || 600000,
+          interruption_sensitivity: config.voice_settings?.interruption_sensitivity || 0.9,
           ...(config.dynamic_variables || {})
         };
       } else {
-        // Use explicit config values only
         this.templateVariables = {
+          build_date: buildDate,
+          today: new Date().toLocaleDateString(),
           repository_name: packageJson.name || "ai-voice-receptionist",
           version: packageJson.version || "1.0.0",
           business_name: config.business?.name || "Your Business",
-          agent_display_name:
-            config.business?.agent_display_name ||
-            "Your Business AI Voice Receptionist",
+          agent_display_name: config.business?.agent_display_name || "Your Business AI Voice Receptionist",
           agent_human_name: config.business?.agent_human_name || "Assistant",
           ai_support_hours: config.business?.ai_support_hours || "24/7",
-          transfer_phone_number:
-            config.infrastructure?.transfer_phone_number || "+1234567890",
+          transfer_phone_number: config.infrastructure?.transfer_phone_number || "+1234567890",
           voice_id: config.voice_settings?.voice_id || "11labs-Cimo",
-          max_call_duration_ms:
-            config.voice_settings?.max_call_duration_ms || 600000,
-          interruption_sensitivity:
-            config.voice_settings?.interruption_sensitivity || 0.9,
-          // Add any custom dynamic variables from config
+          max_call_duration_ms: config.voice_settings?.max_call_duration_ms || 600000,
+          interruption_sensitivity: config.voice_settings?.interruption_sensitivity || 0.9,
           ...(config.dynamic_variables || {})
         };
       }
@@ -302,22 +291,10 @@ class LayerBuilder {
       // Update dynamic variables if they exist
       if (jsonData.conversationFlow?.default_dynamic_variables) {
         const dynVars = jsonData.conversationFlow.default_dynamic_variables;
-
-        // Update standard dynamic variables
-        if (dynVars.agent_name !== undefined) {
-          // agent_name in dynamic variables should reflect the agent human name
-          dynVars.agent_name = this.templateVariables.agent_human_name;
+        // Unify and inject all template variables at build time
+        for (const [key, value] of Object.entries(this.templateVariables)) {
+          dynVars[key] = value;
         }
-        if (dynVars.business_name !== undefined) {
-          dynVars.business_name = this.templateVariables.business_name;
-        }
-        if (dynVars.ai_support_hours !== undefined) {
-          dynVars.ai_support_hours = this.templateVariables.ai_support_hours;
-        }
-        if (dynVars.agent_human_name !== undefined) {
-          dynVars.agent_human_name = this.templateVariables.agent_human_name;
-        }
-        // Do not auto-add arbitrary dynamic variables; only update those explicitly present
       }
 
       // Update webhook URLs in tools
@@ -396,7 +373,7 @@ class LayerBuilder {
         // Get webhook ID for this tool from config
         const webhookId = webhooks[tool.name];
         if (webhookId) {
-          tool.url = `${baseUrl}/${webhookId}`;
+          tool.url = `${webhookId}`;
         }
       }
     });

@@ -2,68 +2,163 @@
   "name": "bookAppointment",
   "nodes": [
     {
-      "id": "1",
-      "name": "Webhook In",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300],
       "parameters": {
         "httpMethod": "POST",
         "path": "bookAppointment",
-        "responseMode": "lastNode"
-      }
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-in-1",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -360
+      ],
+      "webhookId": "wb-book-1"
     },
     {
-      "id": "2",
+      "parameters": {
+        "functionCode": "// Validate required inputs, derive duration from service_type when missing\nconst required = ['service_type','date','time','name','phone'];\nlet missing = [];\nfor (const f of required) { if (!items[0].json[f]) missing.push(f); }\nconst durations = { haircut: 45, color: 120, styling: 30 };\nconst service = (items[0].json.service_type||'').toLowerCase();\nconst duration = items[0].json.duration || durations[service] || 30;\nitems[0].json.duration = duration;\nif (missing.length) {\n  return [{json: { status: 'failure', message: 'Missing required fields.', missing_fields: missing, data: items[0].json }}];\n}\nreturn items;"
+      },
+      "id": "validate-input",
       "name": "Validate Input",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [500, 300],
+      "position": [
+        -20,
+        -360
+      ]
+    },
+    {
       "parameters": {
-        "functionCode": "const required = ['name','service','date','time','phone'];\nlet missing = [];\nfor (const f of required) {\n  if (!items[0].json[f]) missing.push(f);\n}\nif (missing.length) {\n  return [{json: {\n    status: 'failure',\n    message: 'Missing required fields.',\n    missing_fields: missing,\n    data: items[0].json\n  }}];\n}\nreturn items;"
+        "functionCode": "// Compute ISO start/end from date,time,duration\nconst start = items[0].json.date + 'T' + items[0].json.time + ':00';\nconst startDt = new Date(start);\nconst endDt = new Date(startDt.getTime() + (Number(items[0].json.duration) || 30) * 60000);\nitems[0].json.startIso = startDt.toISOString();\nitems[0].json.endIso = endDt.toISOString();\nreturn items;"
+      },
+      "id": "compute-times",
+      "name": "Compute Times",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        180,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{$json[\"startIso\"]}}",
+          "timeMax": "={{$json[\"endIso\"]}}"
+        }
+      },
+      "id": "check-availability",
+      "name": "Check Availability",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        420,
+        -360
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
       }
     },
     {
-      "id": "3",
+      "parameters": {
+        "functionCode": "// If conflicts found (items array length > 0), return a failure envelope with conflicts and a simple suggested alternative\nconst events = items[0].json;\nif (events && events.length) {\n  const conflicts = events.map(e => ({id: e.id, summary: e.summary, start: e.start, end: e.end}));\n  // Suggest a single alternative: push start by 30 minutes\n  const altStart = new Date(new Date(items[0].json.startIso).getTime() + 30*60000).toISOString();\n  const altEnd = new Date(new Date(items[0].json.endIso).getTime() + 30*60000).toISOString();\n  return [{json: { status: 'failure', message: 'Requested time not available', data: { conflicts, alternatives: [{start: altStart, end: altEnd}] } }}];\n}\nreturn items;"
+      },
+      "id": "availability-decision",
+      "name": "Availability Decision",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+          "calendar": {
+            "__rl": true,
+            "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
+            "mode": "list",
+            "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
+          },
+          "start": "={{$json[\"startIso\"]}}",
+          "end": "={{$json[\"endIso\"]}}",
+          "additionalFields": {
+            "description": "Phone: {{$json[\"phone\"]}}. Duration: {{$json[\"duration\"]}} min. Notes: {{$json[\"notes\"] || \"\"}}. Resource: {{$json[\"resource\"] || ''}}. Email: {{$json[\"email\"] || ''}}",
+            "summary": "={{$json[\"service_type\"]}} appointment for {{$json[\"name\"]}}"
+          }
+      },
+      "id": "create-event",
       "name": "Create GCal Event",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "position": [750, 300],
-      "parameters": {
-        "operation": "create",
-        "calendarId": "primary",
-        "start": "={{$json[\"date\"] + \"T\" + $json[\"time\"] + \":00\"}}",
-        "end": "={{$json[\"date\"] + \"T\" + $json[\"time\"] + \":00\"}}",
-        "additionalFields": {
-          "summary": "={{$json[\"service\"]}} appointment for {{$json[\"name\"]}}",
-          "description": "Phone: {{$json[\"phone\"]}}. Notes: {{$json[\"notes\"] || \"\"}}. Email: {{$json[\"email\"] || \"\"}}"
-        }
-      },
+      "position": [
+        900,
+        -360
+      ],
       "credentials": {
-        "googleApi": "Google API Account"
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
       }
     },
     {
-      "id": "4",
+      "parameters": {
+        "functionCode": "return [{json: { status: 'success', data: { appointment_id: items[0].json.id, name: $json.name, service_type: $json.service_type, date: $json.date, time: $json.time, duration: $json.duration, phone: $json.phone, notes: $json.notes || null, resource: $json.resource || null } }}];"
+      },
+      "id": "return-success",
       "name": "Return Success",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1000, 300],
-      "parameters": {
-        "functionCode": "return [{json: {\n  status: 'success',\n  data: {\n    appointment_id: items[0].json.id,\n    name: $json.name,\n    service: $json.service,\n    date: $json.date,\n    time: $json.time,\n    phone: $json.phone,\n    email: $json.email || null,\n    notes: $json.notes || null\n  }\n}}];"
-      }
+      "position": [
+        1140,
+        -360
+      ]
     },
     {
-      "id": "5",
+      "parameters": {
+        "functionCode": "return [{json: { status: 'error', message: $json.message || 'Unknown error occurred while booking appointment.', data: $json }}];"
+      },
+      "id": "error-handler",
       "name": "Error Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1000, 500],
+      "position": [
+        1140,
+        -160
+      ]
+    },
+    {
       "parameters": {
-        "functionCode": "return [{json: {\n  status: 'error',\n  message: $json.message || 'Unknown error occurred while booking appointment.',\n  data: $json\n}}];"
-      }
+        "options": {},
+        "responseData": "={{$json}}"
+      },
+      "id": "respond-webhook-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        -360
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook In": {
       "main": [
@@ -77,6 +172,39 @@
       ]
     },
     "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Compute Times",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Times": {
+      "main": [
+        [
+          {
+            "node": "Check Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Availability": {
+      "main": [
+        [
+          {
+            "node": "Availability Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Availability Decision": {
       "main": [
         [
           {
@@ -95,15 +223,50 @@
             "type": "main",
             "index": 0
           }
-        ],
+        ]
+      ],
+      "error": [
         [
           {
             "node": "Error Handler",
-            "type": "error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
             "index": 0
           }
         ]
       ]
     }
-  }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "book-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  },
+  "id": "book-workflow-1",
+  "tags": []
 }

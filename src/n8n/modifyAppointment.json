@@ -1,66 +1,92 @@
 {
-  "name": "Modify Appointment (Template)",
+  "name": "modifyAppointment",
   "nodes": [
     {
       "parameters": {
         "path": "modifyAppointment",
         "options": {}
       },
-      "id": "1",
+      "id": "8e4c3554-e80f-4a48-8fd3-302bad1d5325",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
-      "webhookDescription": "Triggered by Retell agent"
+      "position": [
+        -280,
+        180
+      ],
+      "webhookDescription": "Triggered by Retell agent",
+      "webhookId": "a66f1b98-e2b8-40a9-9dbb-58a770bba285"
     },
     {
       "parameters": {
-        "calendarId": "primary",
+        "calendar": {
+          "__rl": true,
+          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
+        },
         "eventId": "={{$json[\"appointment_id\"]}}",
-        "updateFields": {
-          "summary": "={{$json[\"updates\"][\"new_service\"] || undefined}}",
-          "description": "={{$json[\"updates\"][\"notes\"] || undefined}}",
-          "start": "={{$json[\"updates\"][\"new_date\"] ? $json[\"updates\"][\"new_date\"] + \"T\" + ($json[\"updates\"][\"new_time\"] || \"00:00\") + \":00\" : undefined}}",
-          "end": "={{$json[\"updates\"][\"new_date\"] ? $json[\"updates\"][\"new_date\"] + \"T\" + ($json[\"updates\"][\"new_time\"] || \"00:00\") + \":00\" : undefined}}"
+        "additionalFields": {
+          "summary": "={{$json[\"updates\"]?.service_type ? $json[\"updates\"].service_type + ' appointment for ' + $json[\"updates\"].name || $json[\"updates\"].service_type : undefined}}",
+          "description": "={{'Phone: ' + ($json[\"updates\"]?.phone || $json[\"phone\"]) + '. Notes: ' + ($json[\"updates\"]?.notes || $json[\"notes\"] || '')}}",
+          "start": "={{$json[\"updates\"]?.date && $json[\"updates\"].time ? $json[\"updates\"].date + 'T' + $json[\"updates\"].time + ':00' : undefined}}",
+          "end": "={{$json[\"updates\"]?.date && $json[\"updates\"].time && $json[\"updates\"].duration ? (new Date(new Date($json[\"updates\"].date + 'T' + $json[\"updates\"].time + ':00').getTime() + ($json[\"updates\"].duration*60000)).toISOString()) : undefined}}"
         }
       },
-      "id": "2",
+      "id": "google-update-event",
       "name": "Google Calendar - Update Event",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "position": [500, 200],
+      "position": [
+        40,
+        80
+      ],
       "credentials": {
-        "googleApi": "YOUR_GOOGLE_API_CREDENTIAL"
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
       }
     },
     {
       "parameters": {
+        "authentication": "oAuth2",
         "operation": "append",
         "sheetId": "YOUR_SHEET_ID",
         "range": "AppointmentChanges!A:E",
-        "values": "={{[$json[\"appointment_id\"], $json[\"updates\"][\"new_date\"] || \"\", $json[\"updates\"][\"new_time\"] || \"\", $json[\"updates\"][\"new_service\"] || \"\", $json[\"updates\"][\"notes\"] || \"\"]}}"
+        "options": {}
       },
-      "id": "3",
+      "id": "google-sheets-log",
       "name": "Google Sheets - Log Modification",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 1,
-      "position": [750, 200],
+      "position": [
+        320,
+        80
+      ],
       "credentials": {
-        "googleSheetsOAuth2Api": "YOUR_GOOGLE_SHEETS_CREDENTIAL"
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
       }
     },
     {
       "parameters": {
-        "responseMode": "lastNode",
-        "responseData": "={{ { \"status\": \"success\", \"appointment_id\": $json[\"id\"], \"confirmation\": \"Appointment \" + $json[\"id\"] + \" updated.\" } }}"
+        "options": {},
+        "responseData": "={{$json}}"
       },
-      "id": "4",
-      "name": "Respond to Retell",
+      "id": "respond-webhook-1",
+      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1000, 200]
+      "position": [
+        720,
+        80
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook Trigger": {
       "main": [
@@ -95,5 +121,16 @@
         ]
       ]
     }
-  }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4576fd8b-6107-4c7e-b186-ed0c19cede6a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  },
+  "id": "3rRNvtMtGMv3Iiyi",
+  "tags": []
 }

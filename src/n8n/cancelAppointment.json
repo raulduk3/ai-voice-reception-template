@@ -2,53 +2,92 @@
   "name": "cancelAppointment",
   "nodes": [
     {
-      "id": "1",
-      "name": "Webhook In",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 300],
       "parameters": {
         "httpMethod": "POST",
         "path": "cancelAppointment",
-        "responseMode": "lastNode"
-      }
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "fb609cb8-5c61-43fd-a721-f654c3df4134",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        60,
+        80
+      ],
+      "webhookId": "cda991aa-4816-4794-816d-77abc363ea3c"
     },
     {
-      "id": "2",
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
+        },
+        "eventId": "={{$json[\"appointment_id\"]}}",
+        "options": {}
+      },
+      "id": "e454b2a0-6767-492a-a543-638d3fbefc24",
       "name": "Delete GCal Event",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1,
-      "position": [550, 300],
-      "parameters": {
-        "operation": "delete",
-        "calendarId": "primary",
-        "eventId": "={{$json[\"appointment_id\"]}}"
-      },
+      "position": [
+        360,
+        80
+      ],
       "credentials": {
-        "googleApi": "Google API Account"
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
       }
     },
     {
-      "id": "3",
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Appointment cancelled successfully.',\n  data: {\n    appointment_id: $json.appointment_id,\n    reason: $json.reason || null\n  }\n}}];"
+      },
+      "id": "f48bf5c8-177c-4eea-b61e-c1bccb1dab3c",
       "name": "Format Success",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [850, 300],
-      "parameters": {
-        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Appointment cancelled successfully.',\n  data: {\n    appointment_id: $json.appointment_id,\n    reason: $json.reason || null\n  }\n}}];"
-      }
+      "position": [
+        660,
+        80
+      ]
     },
     {
-      "id": "4",
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'Failed to cancel the appointment.',\n  data: $json\n}}];"
+      },
+      "id": "2112e42d-3928-49b5-a138-b471ebe1f6fb",
       "name": "Error Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [850, 500],
-      "parameters": {
-        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'Failed to cancel the appointment.',\n  data: $json\n}}];"
-      }
+      "position": [
+        660,
+        280
+      ]
     }
+      ,
+      {
+        "parameters": {
+          "options": {},
+          "responseData": "={{$json}}"
+        },
+        "id": "respond-webhook-1",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          900,
+          80
+        ]
+      }
   ],
+  "pinData": {},
   "connections": {
     "Webhook In": {
       "main": [
@@ -69,15 +108,19 @@
             "type": "main",
             "index": 0
           }
-        ],
-        [
-          {
-            "node": "Error Handler",
-            "type": "error",
-            "index": 0
-          }
         ]
       ]
     }
-  }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cd8f6216-170c-46b3-9d54-7ed984be4ecd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  },
+  "id": "vgO2K5oRPxDfaQgO",
+  "tags": []
 }

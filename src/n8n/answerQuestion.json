@@ -53,6 +53,16 @@
       "typeVersion": 1,
       "webhookId": "98c60e0d-7d19-4e43-b5b6-188d7d5a6bf2"
     },
+      {
+        "id": "returnEnvelope",
+        "name": "Format Envelope",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [1600, 400],
+        "parameters": {
+          "functionCode": "const status = $json.status || 'success';\nconst data = $json.data || {};\nconst message = $json.message || 'Answer returned.';\nreturn [{json: { status, data, message }}];"
+        }
+      },
     {
       "parameters": {},
       "id": "865b15fd-b47a-406d-8142-91734c002761",

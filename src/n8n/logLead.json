@@ -2,79 +2,121 @@
   "name": "logLead",
   "nodes": [
     {
-      "id": "1",
-      "name": "Webhook In",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [250, 200],
       "parameters": {
         "httpMethod": "POST",
         "path": "logLead",
-        "responseMode": "lastNode"
-      }
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "135b3eb1-b3b3-40af-abd6-891780d985d8",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "371606d2-f5b2-462a-814a-ce26a428f966"
     },
     {
-      "id": "2",
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "sheetId": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
+        "keyRow": 1,
+        "options": {
+          "valueInputMode": "RAW"
+        }
+      },
+      "id": "64c47fd6-0e27-4a43-8eff-37e5f6a641cd",
       "name": "Append Row to Google Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 1,
-      "position": [550, 200],
-      "parameters": {
-        "operation": "append",
-        "sheetId": "YOUR_LEADS_SHEET_ID",
-        "range": "A:F",
-        "options": {
-          "valueInputMode": "RAW"
-        },
-        "fields": {
-          "values": "={{[$json.name, $json.phone, $json.email || '', $json.service_interest || '', $json.notes || '', $json.timestamp || new Date().toISOString()]}}"
-        }
-      },
+      "position": [
+        300,
+        0
+      ],
       "credentials": {
-        "googleSheetsOAuth2Api": "Google Sheets Account"
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
       }
     },
     {
-      "id": "3",
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: $json.name,\n    phone: $json.phone,\n    email: $json.email || null,\n    service_interest: $json.service_interest || null,\n    notes: $json.notes || null,\n    timestamp: $json.timestamp || new Date().toISOString()\n  }\n}}];"
+      },
+      "id": "ab4c9335-ce6f-4edc-b673-20031d84e17f",
       "name": "Format Success",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [850, 200],
-      "parameters": {
-        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: $json.name,\n    phone: $json.phone,\n    email: $json.email || null,\n    service_interest: $json.service_interest || null,\n    notes: $json.notes || null,\n    timestamp: $json.timestamp || new Date().toISOString()\n  }\n}}];"
-      }
+      "position": [
+        600,
+        0
+      ]
     },
     {
-      "id": "4",
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'failure',\n  message: 'Lead could not be logged due to invalid or missing data.',\n  data: $json\n}}];"
+      },
+      "id": "57844118-a003-47da-8b5e-695ee3a3ea12",
       "name": "Failure Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [850, 400],
-      "parameters": {
-        "functionCode": "return [{json: {\n  status: 'failure',\n  message: 'Lead could not be logged due to invalid or missing data.',\n  data: $json\n}}];"
-      }
+      "position": [
+        600,
+        200
+      ]
     },
     {
-      "id": "5",
+      "parameters": {
+        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'System error occurred while logging lead.',\n  data: $json\n}}];"
+      },
+      "id": "cb6adf50-de9d-4bf1-8968-a2cbf28bcca1",
       "name": "Error Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [850, 600],
-      "parameters": {
-        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'System error occurred while logging lead.',\n  data: $json\n}}];"
-      }
+      "position": [
+        600,
+        400
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
     "Webhook In": {
-      "main": [[{ "node": "Append Row to Google Sheet", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Append Row to Google Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Append Row to Google Sheet": {
       "main": [
-        [{ "node": "Format Success", "type": "main", "index": 0 }],
-        [{ "node": "Failure Handler", "type": "main", "index": 0 }],
-        [{ "node": "Error Handler", "type": "error", "index": 0 }]
+        [
+          {
+            "node": "Format Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
-  }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b24d0d8f-47cd-46c5-a805-3f92bf4a44dc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  },
+  "id": "ahIUCg31KnqDMELW",
+  "tags": []
 }
