@@ -589,34 +589,42 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Using the identified appointment information, prepare to execute the requested modification or cancellation action while ensuring all required parameters are properly fulfilled."
+            "text": "Using the identified appointment information, operate on the appointment: answer questions, modify, or cancel as requested. Ensure all required parameters are properly fulfilled before executing any action."
         },
-        "name": "Cancel or Modify Existing Appointment",
+          "name": "Operate on Existing Appointment",
         "edges": [
-          {
-            "destination_node_id": "node-1759300443418",
-            "id": "edge-1759299860372",
-            "transition_condition": {
-              "type": "prompt",
-              "prompt": "Appointment has been identified and modification details have been collected from the caller."
+            {
+              "destination_node_id": "node-1759288307521",
+              "id": "edge-operate-answer",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller asks a question about their identified appointment."
+              }
+            },
+            {
+              "destination_node_id": "node-1759300443418",
+              "id": "edge-operate-modify",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller requests to modify their identified appointment."
+              }
+            },
+            {
+              "destination_node_id": "node-1759300500941",
+              "id": "edge-operate-cancel",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller requests to cancel their identified appointment."
+              }
+            },
+            {
+              "destination_node_id": "start-node-1759266611426",
+              "id": "edge-operate-abandon",
+              "transition_condition": {
+                "type": "prompt",
+                "prompt": "Caller decides not to proceed with any operation on the appointment."
+              }
             }
-          },
-          {
-            "destination_node_id": "node-1759300500941",
-            "id": "edge-1759300131480",
-            "transition_condition": {
-              "type": "prompt",
-              "prompt": "Appointment has been identified and caller has confirmed their intention to cancel."
-            }
-          },
-          {
-            "destination_node_id": "start-node-1759266611426",
-            "id": "edge-1759301710230",
-            "transition_condition": {
-              "type": "prompt",
-              "prompt": "Caller decides not to proceed with either appointment modification or cancellation."
-            }
-          }
         ],
         "id": "node-1759299860372",
         "knowledge_base_ids": [],
