@@ -1,9 +1,9 @@
 {
   "business": {
-    "name": "Caroline Smith's Salon",
-    "agent_display_name": "Caroline Smith Salon to Layer 7 AI Voice Receptionist",
+    "agent_display_name": "Layer 7 Salon Receptionist (PoC)",
     "agent_human_name": "Myra",
-    "ai_support_hours": "24/7"
+    "ai_support_hours": "24/7",
+    "name": "Caroline Smith's Salon"
   },
   "infrastructure": {
     "transfer_phone_number": "+17734699726"
@@ -22,5 +22,6 @@
     "max_call_duration_ms": 600000,
     "interruption_sensitivity": 0.9
   },
-  "dynamic_variables": {}
+  "dynamic_variables": {},
+  "auto_generate_from_repo": false
 }

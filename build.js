@@ -4,7 +4,7 @@ const prettier = require("prettier");
 
 class LayerBuilder {
   constructor() {
-    this.sourceDir = "template/";
+    this.sourceDir = "src/";
     this.distDir = "dist";
     this.prettierConfig = null;
     this.templateConfig = null;
@@ -295,18 +295,8 @@ class LayerBuilder {
 
       // Update global prompt if core prompt is loaded
       if (this.corePrompt && jsonData.conversationFlow?.global_prompt !== undefined) {
-        // Apply template variables to the core prompt content
-        let processedPrompt = this.corePrompt;
-        for (const [key, value] of Object.entries(this.templateVariables)) {
-          const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-          processedPrompt = processedPrompt.replace(regex, value);
-        }
-        // Also handle legacy {{agent_name}} -> use agent_human_name
-        processedPrompt = processedPrompt.replace(
-          /\{\{agent_name\}\}/g,
-          this.templateVariables.agent_human_name
-        );
-        jsonData.conversationFlow.global_prompt = processedPrompt;
+        // Inject the raw corePrompt, preserving all template variables for runtime
+        jsonData.conversationFlow.global_prompt = this.corePrompt;
       }
 
       // Update dynamic variables if they exist
@@ -315,6 +305,7 @@ class LayerBuilder {
 
         // Update standard dynamic variables
         if (dynVars.agent_name !== undefined) {
+          // agent_name in dynamic variables should reflect the agent human name
           dynVars.agent_name = this.templateVariables.agent_human_name;
         }
         if (dynVars.business_name !== undefined) {
@@ -323,24 +314,10 @@ class LayerBuilder {
         if (dynVars.ai_support_hours !== undefined) {
           dynVars.ai_support_hours = this.templateVariables.ai_support_hours;
         }
-
-        // Update any custom dynamic variables from config
-        for (const [key, value] of Object.entries(this.templateVariables)) {
-          // Skip system/infrastructure variables, only add dynamic variables
-          const systemVars = [
-            "repository_name",
-            "version",
-            "agent_display_name",
-            "transfer_phone_number",
-            "voice_id",
-            "max_call_duration_ms",
-            "interruption_sensitivity"
-          ];
-          if (!systemVars.includes(key)) {
-            // Add custom dynamic variables (even if they don't exist in template)
-            dynVars[key] = value;
-          }
+        if (dynVars.agent_human_name !== undefined) {
+          dynVars.agent_human_name = this.templateVariables.agent_human_name;
         }
+        // Do not auto-add arbitrary dynamic variables; only update those explicitly present
       }
 
       // Update webhook URLs in tools
@@ -371,10 +348,10 @@ class LayerBuilder {
           const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
           processedPrompt = processedPrompt.replace(regex, value);
         }
-        // Also handle legacy {{agent_name}} -> use agent_human_name
+        // Also handle legacy {{agent_name}} -> use agent_display_name
         processedPrompt = processedPrompt.replace(
           /\{\{agent_name\}\}/g,
-          this.templateVariables.agent_human_name
+          this.templateVariables.agent_display_name
         );
 
         // Find and update the Answer Agent node
