@@ -1,418 +1,83 @@
 {
+  "name": "answerQuestion",
   "nodes": [
     {
       "parameters": {
-        "memoryKey": "company_vector_store_{{$execution.id}}"
-      },
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
-      "typeVersion": 1.1,
-      "position": [1400, 180],
-      "id": "59aa657e-d54b-47b4-ab48-b4f8c62542ba",
-      "name": "Simple Vector Store1"
-    },
-    {
-      "parameters": {},
-      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
-      "typeVersion": 1,
-      "position": [980, 200],
-      "id": "1dd6ecce-5a26-46b4-a2fc-e54d0278c2b7",
-      "name": "Token Splitter"
-    },
-    {
-      "parameters": {
-        "mode": "insert",
-        "memoryKey": "company_vector_store_{{$execution.id}}"
-      },
-      "id": "2c7aeb79-5c5c-4fd0-80c1-31308d5bb9d2",
-      "name": "Simple Vector Store",
-      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
-      "position": [840, -140],
-      "typeVersion": 1.1
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "e15ba8ec-5385-4432-a830-732a54df8215",
-      "name": "Embeddings OpenAI",
-      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
-      "position": [840, 420],
-      "typeVersion": 1.2
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
         "path": "answerQuestion",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
-      "id": "4bd92a28-d757-4b89-b8dd-32060910f771",
-      "name": "Webhook In",
       "type": "n8n-nodes-base.webhook",
-      "position": [-480, -420],
-      "typeVersion": 1,
-      "webhookId": "98c60e0d-7d19-4e43-b5b6-188d7d5a6bf2"
-    },
-      {
-        "id": "returnEnvelope",
-        "name": "Format Envelope",
-        "type": "n8n-nodes-base.function",
-        "typeVersion": 1,
-        "position": [1600, 400],
-        "parameters": {
-          "functionCode": "const status = $json.status || 'success';\nconst data = $json.data || {};\nconst message = $json.message || 'Answer returned.';\nreturn [{json: { status, data, message }}];"
-        }
-      },
-    {
-      "parameters": {},
-      "id": "865b15fd-b47a-406d-8142-91734c002761",
-      "name": "Check Staleness (Code)",
-      "type": "n8n-nodes-base.code",
-      "position": [-260, -420],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{$json.stale}}"
-            }
-          ]
-        }
-      },
-      "id": "57163a27-9a9c-4684-9a1a-45fd5d4366c3",
-      "name": "If Stale?",
-      "type": "n8n-nodes-base.if",
-      "position": [-20, -420],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "resource": "fileFolder",
-        "filter": {},
-        "options": {}
-      },
-      "id": "93e36a8a-d6cb-4e87-b949-75eb8d74ab54",
-      "name": "Google Drive List",
-      "type": "n8n-nodes-base.googleDrive",
-      "position": [180, -240],
-      "typeVersion": 3,
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "qLpGFsaJbOVer7kT",
-          "name": "Google Drive "
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "download",
-        "fileId": "={{$json.id}}",
-        "options": {}
-      },
-      "id": "e2395ff2-fc9a-4941-8f21-3212385a701d",
-      "name": "Download Docs",
-      "type": "n8n-nodes-base.googleDrive",
-      "position": [400, -240],
-      "typeVersion": 3,
-      "credentials": {
-        "googleDriveOAuth2Api": {
-          "id": "qLpGFsaJbOVer7kT",
-          "name": "Google Drive "
-        }
-      }
+      "typeVersion": 2,
+      "position": [
+        680,
+        -180
+      ],
+      "id": "1c14891a-694d-47a9-b222-f47ebe702fbf",
+      "name": "Webhook",
+      "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "5630fe8b-289d-4bd7-a3e2-5204320df3fa",
-      "name": "Google Sheets FAQ",
-      "type": "n8n-nodes-base.googleSheets",
-      "position": [180, -40],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "functionCode": "return [{json:{data: JSON.stringify($json)}}];"
-      },
-      "id": "594ae55e-8d9e-4bfd-a8f6-d69d48a9c908",
-      "name": "Sheet to Text",
-      "type": "n8n-nodes-base.function",
-      "position": [400, -40],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "topK": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}"
-      },
-      "id": "411051f1-86d5-4148-a155-cfe3b6d4d4da",
-      "name": "Answer questions with a vector store",
-      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
-      "position": [1620, -100],
-      "typeVersion": 1.1
-    },
-    {
-      "parameters": {
-        "options": {
-          "systemMessage": "You are a receptionist assistant that answers questions. Use ONLY the Query Data Tool.\n\n**NEVER disclose PII:** Names, phone numbers, appointment details, or any customer-specific information.\n\n**Safe topics:** Business hours, services, pricing, location, general policies, booking density, unavailability, and safe sheet entries.\n\n**Response formats:**\n- Sensitive queries: {\"status\":\"failure\",\"reason\":\"sensitive_request_requires_identification\",\"next_action\":\"identifyAppointment\"}\n- No relevant info: {\"status\":\"failure\",\"reason\":\"no_relevant_information\",\"next_action\":\"logLead\"}  \n- General questions: {\"status\":\"success\",\"answer\":\"your response\"}\n\nWhen in doubt, protect privacy."
-        }
-      },
-      "id": "b51a4078-e52f-4d8c-bd99-d931e8051170",
-      "name": "Answer Agent",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "position": [1240, -400],
-      "typeVersion": 2
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o-mini"
-        },
-        "options": {}
-      },
-      "id": "f9cad7f9-d0b0-4255-8ada-edef6e199c62",
-      "name": "OpenAI Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "position": [1720, 180],
-      "typeVersion": 1.2
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "5e170377-46d3-439f-b0b3-58503eb4dfa4",
-      "name": "Webhook Response",
+      "id": "dd79a510-f495-4d2a-901f-2fe1b9a00444",
+      "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "position": [1700, -400],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {},
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.1,
-      "position": [620, -140],
-      "id": "b5141e4a-952e-4b25-b34c-c5789752348e",
-      "name": "Merge"
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -180
+      ]
     },
     {
       "parameters": {
-        "dataType": "binary",
-        "options": {}
+        "functionCode": "const errorMessage = $json.message || $json.error?.message || 'A system error occurred while answering question.';\nconst errorType = $json.code || $json.error?.code || 'ANSWER_ERROR';\n\nreturn [{json: {\n  status: 'error',\n  message: errorMessage,\n  data: {\n    error_type: errorType,\n    timestamp: new Date().toISOString(),\n    retry_possible: !errorType.includes('AUTH'),\n    technical_details: $json\n  }\n}}];"
       },
-      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "id": "307d2b98-ae1a-46fc-ab45-9ab59897f9f0",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [980, 60],
-      "id": "4b42f64e-31c2-4efd-a707-853d81a1dc22",
-      "name": "Default Data Loader"
+      "position": [
+        900,
+        -180
+      ]
     }
   ],
+  "pinData": {},
   "connections": {
-    "Simple Vector Store1": {
-      "ai_vectorStore": [
-        [
-          {
-            "node": "Answer questions with a vector store",
-            "type": "ai_vectorStore",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Token Splitter": {
-      "ai_textSplitter": [
-        [
-          {
-            "node": "Default Data Loader",
-            "type": "ai_textSplitter",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Simple Vector Store": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Answer Agent",
+            "node": "Error Handler",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Embeddings OpenAI": {
-      "ai_embedding": [
-        [
-          {
-            "node": "Simple Vector Store",
-            "type": "ai_embedding",
-            "index": 0
-          },
-          {
-            "node": "Simple Vector Store1",
-            "type": "ai_embedding",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook In": {
+    "Error Handler": {
       "main": [
         [
           {
-            "node": "Check Staleness (Code)",
+            "node": "Respond to Webhook",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Staleness (Code)": {
-      "main": [
-        [
-          {
-            "node": "If Stale?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If Stale?": {
-      "main": [
-        [
-          {
-            "node": "Google Drive List",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Google Sheets FAQ",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Answer Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Drive List": {
-      "main": [
-        [
-          {
-            "node": "Download Docs",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Download Docs": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Sheets FAQ": {
-      "main": [
-        [
-          {
-            "node": "Sheet to Text",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Sheet to Text": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Answer questions with a vector store": {
-      "ai_tool": [
-        [
-          {
-            "node": "Answer Agent",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Answer Agent": {
-      "main": [
-        [
-          {
-            "node": "Webhook Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Answer Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Answer questions with a vector store",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "Simple Vector Store",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Default Data Loader": {
-      "ai_document": [
-        [
-          {
-            "node": "Simple Vector Store",
-            "type": "ai_document",
             "index": 0
           }
         ]
       ]
     }
   },
-  "pinData": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9ed4ed48-6803-4819-a4b2-a130cf740a0d",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
-  }
+  },
+  "id": "bT6QKfJqgyP1bK8j",
+  "tags": []
 }

@@ -3,145 +3,77 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "identifyAppointment",
-        "responseMode": "lastNode",
         "options": {}
       },
-      "id": "d0604dac-3f29-4a36-bce0-73c90c36a789",
-      "name": "Webhook In",
-      "type": "n8n-nodes-base.webhook",
+      "id": "5e9e9f1e-f5cd-4016-93db-b1073bfb3ef9",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        0,
-        0
-      ],
-      "webhookId": "e5e7d3fe-e8f4-4f66-85e0-b9bd3e995765"
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "calendar": {
-          "__rl": true,
-          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
-          "mode": "list",
-          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
-        },
-        "returnAll": true,
-        "options": {
-          "q": "={{$json.context || $json.query || $json.name || $json.phone || ''}}"
-        }
-      },
-      "id": "search-gcal-events",
-      "name": "Search GCal Events",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
-      "position": [
-        260,
-        0
-      ],
-      "credentials": {
-        "googleCalendarOAuth2Api": {
-          "id": "hoMR3q3gb9pxlxTs",
-          "name": "Google Calendar account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "functionCode": "const events = items[0].json;\nif (!events || !events.length) {\n  return [{json: { status: 'failure', message: 'No matching appointments found.', data: { query: $json.query, context: $json.context || null } }}];\n}\nif (events.length > 1) {\n  return [{json: { status: 'failure', message: 'Multiple matching appointments found. Clarification required.', data: { matches: events.map(e => ({id: e.id, summary: e.summary, start: e.start, end: e.end})) } }}];\n}\nconst e = events[0];\nreturn [{json: { status: 'success', data: { appointment_id: e.id, summary: e.summary, start: e.start, end: e.end } }}];"
-      },
-      "id": "check-matches",
-      "name": "Check Matches",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [
-        500,
-        0
+        480,
+        100
       ]
     },
     {
       "parameters": {
-        "functionCode": "return [{json: {\n  status: 'error',\n  message: $json.message || 'Unknown error occurred while identifying appointment.',\n  data: $json\n}}];"
+        "path": "identifyAppointment",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "b843bd5e-1393-4871-b59e-c3f8755b7f4f",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        40,
+        100
+      ],
+      "id": "6b9a31f6-3a96-48e8-bc72-95cd3ae272db",
+      "name": "Webhook",
+      "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
+    },
+    {
+      "parameters": {
+        "functionCode": "const errorMessage = $json.message || $json.error?.message || 'A system error occurred while identifying appointment.';\nconst errorType = $json.code || $json.error?.code || 'IDENTIFY_APPOINTMENT_ERROR';\n\nreturn [{json: {\n  status: 'error',\n  message: errorMessage,\n  data: {\n    error_type: errorType,\n    timestamp: new Date().toISOString(),\n    retry_possible: !errorType.includes('AUTH'),\n    technical_details: $json\n  }\n}}];"
+      },
+      "id": "a9b12f8d-e270-4082-ac77-ea1ca3c04854",
       "name": "Error Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        500,
-        160
+        260,
+        100
       ]
     }
-      ,
-      {
-        "parameters": {
-          "options": {},
-          "responseData": "={{$json}}"
-        },
-        "id": "respond-webhook-1",
-        "name": "Respond to Webhook",
-        "type": "n8n-nodes-base.respondToWebhook",
-        "typeVersion": 1,
-        "position": [
-          800,
-          0
-        ]
-      }
   ],
   "pinData": {},
   "connections": {
-    "Webhook In": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Search GCal Events",
+            "node": "Error Handler",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Search GCal Events": {
+    "Error Handler": {
       "main": [
         [
           {
-            "node": "Check Matches",
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
         ]
       ]
     }
-      ,
-      "Check Matches": {
-        "main": [
-          [
-            {
-              "node": "Respond to Webhook",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      },
-      "Error Handler": {
-        "main": [
-          [
-            {
-              "node": "Respond to Webhook",
-              "type": "main",
-              "index": 0
-            }
-          ]
-        ]
-      }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "0eef132d-e7bd-4e47-bfb2-1bfff4a2f530",
+  "versionId": "da95669b-9f55-4c2e-965c-b4942a093772",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"

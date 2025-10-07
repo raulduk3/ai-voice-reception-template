@@ -3,39 +3,102 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "logLead",
-        "responseMode": "lastNode",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
+          "mode": "list",
+          "cachedResultName": "Fake CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Leads/Callbacks",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $json.args.name }}",
+            "service_interest": "={{ $json.args.service_interest }}",
+            "phone": "={{ $json.args.phone }}",
+            "notes": "={{ $json.args.notes }}",
+            "timestamp": "={{ $json.args.timestamp }}",
+            "email": "={{ $json.args.email }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service_interest",
+              "displayName": "service_interest",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
         "options": {}
       },
-      "id": "135b3eb1-b3b3-40af-abd6-891780d985d8",
-      "name": "Webhook In",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ],
-      "webhookId": "371606d2-f5b2-462a-814a-ce26a428f966"
-    },
-    {
-      "parameters": {
-        "authentication": "oAuth2",
-        "operation": "append",
-        "sheetId": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
-        "keyRow": 1,
-        "options": {
-          "valueInputMode": "RAW"
-        }
-      },
-      "id": "64c47fd6-0e27-4a43-8eff-37e5f6a641cd",
-      "name": "Append Row to Google Sheet",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 1,
+      "typeVersion": 4.6,
       "position": [
-        300,
-        0
+        360,
+        180
       ],
+      "id": "541188d0-eeba-4069-aadb-4795620bd3ff",
+      "name": "Google Sheets",
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "S8SEj6XfWzKC8Ohj",
@@ -45,62 +108,193 @@
     },
     {
       "parameters": {
-        "functionCode": "return [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: $json.name,\n    phone: $json.phone,\n    email: $json.email || null,\n    service_interest: $json.service_interest || null,\n    notes: $json.notes || null,\n    timestamp: $json.timestamp || new Date().toISOString()\n  }\n}}];"
+        "options": {}
       },
-      "id": "ab4c9335-ce6f-4edc-b673-20031d84e17f",
+      "id": "80b09849-9e27-4a90-85ff-e39c56ccc385",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "logLead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "45449194-2134-42ce-a3c1-6e405a0c8bb4",
+      "name": "Webhook In",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        280
+      ],
+      "webhookId": "371606d2-f5b2-462a-814a-ce26a428f966"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "extract-args-lead",
+              "name": "args",
+              "value": "={{ $json.body }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        280
+      ],
+      "id": "64790e45-402b-4283-bbd1-794dd082ef29",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Only process if this is actual Google Sheets success data, not a failure object\nif ($json.status === 'failure' || $json.status === 'error') {\n  return [];\n}\n\nconst args = $json.args || $json;\nreturn [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: args.name,\n    phone: args.phone,\n    email: args.email || null,\n    service_interest: args.service_interest || null,\n    notes: args.notes || null,\n    timestamp: args.timestamp\n  }\n}}];"
+      },
+      "id": "700af63a-78a7-4153-a406-38fa42f0989e",
       "name": "Format Success",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        600,
-        0
+        580,
+        80
       ]
     },
     {
       "parameters": {
-        "functionCode": "return [{json: {\n  status: 'failure',\n  message: 'Lead could not be logged due to invalid or missing data.',\n  data: $json\n}}];"
+        "functionCode": "// Only process if this is a failure object from validation, not Google Sheets success data\nif ($json.status !== 'failure') {\n  return [];\n}\n\nconst message = $json.message || 'Lead could not be logged due to invalid or missing data.';\n\nreturn [{json: {\n  status: 'failure',\n  message: message,\n  data: {\n    reason: 'validation_failed',\n    timestamp: new Date().toISOString(),\n    details: $json\n  }\n}}];"
       },
-      "id": "57844118-a003-47da-8b5e-695ee3a3ea12",
+      "id": "22d4ea1c-e0fb-4b62-bf5c-86a8ca791b76",
       "name": "Failure Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        600,
-        200
+        580,
+        480
       ]
     },
     {
       "parameters": {
-        "functionCode": "return [{json: {\n  status: 'error',\n  message: 'System error occurred while logging lead.',\n  data: $json\n}}];"
+        "functionCode": "// Only process actual Google Sheets errors, not success or validation failures\nif ($json.status === 'success' || $json.status === 'failure' || !$json.error) {\n  return [];\n}\n\nconst errorMessage = $json.message || $json.error?.message || 'A system error occurred while logging the lead.';\nconst errorType = $json.code || $json.error?.code || 'LEAD_LOG_ERROR';\n\nreturn [{json: {\n  status: 'error',\n  message: errorMessage,\n  data: {\n    error_type: errorType,\n    timestamp: new Date().toISOString(),\n    retry_possible: !errorType.includes('AUTH'),\n    technical_details: $json\n  }\n}}];"
       },
-      "id": "cb6adf50-de9d-4bf1-8968-a2cbf28bcca1",
+      "id": "ac6c5b1b-23b5-4f3e-ae64-e789e68fb501",
       "name": "Error Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        600,
-        400
+        580,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validate lead data\nconst args = items[0].json.args;\nconst required = ['name', 'phone', 'timestamp'];\nconst missing = required.filter(f => !(f in args));\n\nif (missing.length) {\n  return [{json: {\n    status: 'failure',\n    message: 'Missing required lead information.',\n    data: {\n      missing_fields: missing,\n      provided_fields: Object.keys(args).filter(k => args[k])\n    }\n  }}];\n}\n\n// Add timestamp if not provided\nif (!args.timestamp) {\n  args.timestamp = new Date().toISOString();\n}\n\nitems[0].json.args = args;\nreturn items;"
+      },
+      "id": "b297f842-0a61-455b-86b5-ead3f53421b2",
+      "name": "Validate Lead Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        140,
+        280
       ]
     }
   ],
   "pinData": {},
   "connections": {
-    "Webhook In": {
+    "Google Sheets": {
       "main": [
         [
           {
-            "node": "Append Row to Google Sheet",
+            "node": "Format Success",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error Handler",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Append Row to Google Sheet": {
+    "Webhook In": {
       "main": [
         [
           {
-            "node": "Format Success",
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Validate Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Failure Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Failure Handler",
             "type": "main",
             "index": 0
           }
@@ -112,7 +306,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b24d0d8f-47cd-46c5-a805-3f92bf4a44dc",
+  "versionId": "8a66f15e-ebc7-44cd-b4fe-87cb2b474b85",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"

@@ -1,19 +1,19 @@
 {
   "agent_id": "",
   "channel": "voice",
-  "last_modification_timestamp": 1759777410012,
+  "last_modification_timestamp": 1759854243864,
   "agent_name": "{{agent_name}}",
   "response_engine": {
     "type": "conversation-flow",
-    "version": 1,
-    "conversation_flow_id": "conversation_flow_810ce3958ea3"
+    "version": 0,
+    "conversation_flow_id": "conversation_flow_d0b4037701a9"
   },
   "language": "en-US",
+  "opt_out_sensitive_data_storage": false,
   "data_storage_setting": "everything",
   "opt_in_signed_url": false,
-  "version": 1,
+  "version": 0,
   "is_published": false,
-  "version_title": "V0.1.1 - Beta",
   "post_call_analysis_model": "gpt-4o-mini",
   "pii_config": {
     "mode": "post_call",
@@ -38,14 +38,14 @@
   "user_dtmf_options": {},
   "retellLlmData": null,
   "conversationFlow": {
-    "conversation_flow_id": "conversation_flow_810ce3958ea3",
-    "version": 1,
-    "global_prompt": "Last updated: {{last_updated}}\n\nYou are {{agent_name}}, the AI receptionist for {{business_name}}. Your role is to answer inbound\nphone calls in a polite, natural, and professional manner. You must use the defined actions to\nhandle requests such as booking, modifying, or canceling appointments, answering questions, and\nlogging leads.\n\n## Core Instructions\n\n- Track the entire conversation until the call ends.\n- Collect information gradually and confirm back to the caller before executing an action.\n- Do not invent or assume business details.\n- NEVER disclose customer-specific booking details through `answerQuestion` or general responses.\n- All requests for personal appointment information must be routed through `identifyAppointment`.\n- When an action is executed, assume the client's system handles confirmations and reminders.\n- Always ensure required fields for any action are collected and confirmed with the caller.\n\n## Appointment Booking\n\n- For `bookAppointment`, collect and confirm all required fields before calling.\n- Ask naturally for each piece of information (service, stylist, date, time, location, notes).\n- Never call until the schema is satisfied.\n\n## Appointment Modification\n\n- For `modifyAppointment`, first identify the appointment (use `identifyAppointment` if needed).\n- Collect identifying details (name, phone, date/time).\n- Gather all requested changes and confirm before executing.\n\n## Appointment Cancellation\n\n- For `cancelAppointment`, first identify the appointment.\n- Collect identifying details and the date/time.\n- Confirm the cancellation before executing.\n\n## Appointment Identification\n\n- For `identifyAppointment`, use the caller's description to retrieve matches.\n- If multiple or none, ask clarifying questions until one is identified.\n- Only then proceed with modification or cancellation.\n\n## FAQs\n\n- Use built-in FAQ data first.\n- For general, non-personal questions (services, hours, policies), call `answerQuestion`.\n- NEVER use `answerQuestion` for specific appointments or customer details.\n- If uncertain, call `logLead` for follow-up.\n\n## AI Supported Hours\n\n{{ai_support_hours}}\n\n## Actions Available\n\n- `bookAppointment`\n- `identifyAppointment`\n- `modifyAppointment`\n- `cancelAppointment`\n- `answerQuestion`\n- `logLead`\n\n## Closing\n\nAlways close politely:  \n\"Thank you for calling {{business_name}}, we look forward to seeing you.\"\n",
+    "conversation_flow_id": "conversation_flow_d0b4037701a9",
+    "version": 0,
+    "global_prompt": "",
     "nodes": [
       {
         "instruction": {
           "type": "prompt",
-          "text": "Analyze the caller's intent and route the conversation to the appropriate node based on their request. Respond contextually."
+          "text": "Analyze the caller's intent and route to the appropriate conversation node. Listen actively and respond naturally to understand their needs before transitioning."
         },
         "name": "Router",
         "edges": [
@@ -122,14 +122,14 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 777,
-          "y": 2653
+          "x": 1277,
+          "y": 2509
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Provide accurate and helpful responses to the caller's questions using available knowledge base information."
+          "text": "Answer general business questions using the knowledge base."
         },
         "name": "Answer Question",
         "edges": [
@@ -162,14 +162,14 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 1277,
+          "x": 1777,
           "y": 751
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Offer the caller an option to receive a callback from human support when the AI agent is unable to fulfill their request or encounters an error."
+          "text": "Offer callback from human support and collect information for lead logging."
         },
         "name": "Fallback/Log Lead/Provide Callback",
         "edges": [
@@ -205,8 +205,8 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 3777,
-          "y": 2526
+          "x": 4277,
+          "y": 2382
         }
       },
       {
@@ -214,19 +214,19 @@
         "id": "node-1759285139512",
         "type": "end",
         "display_position": {
-          "x": 5777,
-          "y": 3507
+          "x": 6277,
+          "y": 3363
         },
         "instruction": {
           "type": "prompt",
-          "text": "Conclude the call in a professional and courteous manner."
+          "text": "End call professionally."
         }
       },
       {
         "custom_sip_headers": {},
         "transfer_destination": {
           "type": "predefined",
-          "number": "{{transfer_phone_number}}"
+          "number": "+17734699726"
         },
         "edge": {
           "destination_node_id": "node-1759267848412",
@@ -248,14 +248,14 @@
         },
         "type": "transfer_call",
         "display_position": {
-          "x": 4777,
-          "y": 3317
+          "x": 5277,
+          "y": 3173
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Collect all necessary appointment information from the caller to execute the bookAppointment action successfully."
+          "text": "Collect required appointment information. Transition to booking when complete."
         },
         "name": "Gather New Appointment Details",
         "edges": [
@@ -280,8 +280,8 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 2505,
-          "y": 429
+          "x": 3277,
+          "y": 219
         }
       },
       {
@@ -307,8 +307,8 @@
         },
         "type": "branch",
         "display_position": {
-          "x": 4277,
-          "y": 3104
+          "x": 4777,
+          "y": 2960
         }
       },
       {
@@ -345,7 +345,7 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 3277,
+          "x": 3777,
           "y": 274
         },
         "wait_for_result": true
@@ -353,7 +353,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Address any invalid appointment details that caused the booking failure and collect corrected information from the caller to resolve the identified errors or constraints."
+          "text": "Explain booking failure and collect corrected information."
         },
         "name": "Re-Verify Appointment Details",
         "edges": [
@@ -386,7 +386,7 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 3777,
+          "x": 4277,
           "y": 0
         }
       },
@@ -424,15 +424,15 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 2777,
-          "y": 1162
+          "x": 3277,
+          "y": 1156
         },
         "wait_for_result": true
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Provide a summary of the interaction and inquire if the caller has any additional questions regarding appointments or services at {{business_name}}."
+          "text": "Summarize interaction and check if caller needs anything else."
         },
         "name": "End Call Confirmation",
         "edges": [
@@ -460,7 +460,7 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 4777,
+          "x": 5277,
           "y": 190
         }
       },
@@ -477,7 +477,15 @@
             }
           },
           {
-            "destination_node_id": "node-1759267848412",
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759867986545",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Failure"
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
             "id": "edge-1759301979878",
             "transition_condition": {
               "type": "prompt",
@@ -490,7 +498,7 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 4277,
+          "x": 4777,
           "y": 274
         },
         "wait_for_result": true
@@ -498,7 +506,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Acknowledge that the system cannot provide an answer to the caller's question and offer alternative assistance."
+          "text": "Acknowledge inability to answer and offer callback or transfer alternatives."
         },
         "name": "Q/A Fail",
         "edges": [
@@ -523,14 +531,14 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 3277,
-          "y": 2013
+          "x": 3777,
+          "y": 1869
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel.  You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller."
+          "text": "Collect identifying information to search for the appointment."
         },
         "name": "Identify Appointment",
         "edges": [
@@ -555,8 +563,8 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 1277,
-          "y": 1645
+          "x": 1777,
+          "y": 1633
         }
       },
       {
@@ -593,15 +601,15 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 1777,
-          "y": 1774
+          "x": 2277,
+          "y": 1696
         },
         "wait_for_result": true
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Using the identified appointment information, operate on the appointment: answer questions, modify, or cancel as requested. Ensure all required parameters are properly fulfilled before executing any action."
+          "text": "Determine caller's intent for the identified appointment: answer question, modify, or cancel."
         },
         "name": "Operate on Existing Appointment",
         "edges": [
@@ -642,7 +650,7 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 2277,
+          "x": 2777,
           "y": 1041
         }
       },
@@ -659,6 +667,13 @@
             }
           },
           {
+            "id": "edge-1759870963515",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Failure"
+            }
+          },
+          {
             "destination_node_id": "node-1759267848412",
             "id": "edge-1759302058185",
             "transition_condition": {
@@ -672,7 +687,7 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 3277,
+          "x": 3777,
           "y": 751
         },
         "wait_for_result": true
@@ -690,6 +705,13 @@
             }
           },
           {
+            "id": "edge-1759870980769",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Failure"
+            }
+          },
+          {
             "destination_node_id": "node-1759267848412",
             "id": "edge-1759302005400",
             "transition_condition": {
@@ -703,15 +725,15 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 3277,
-          "y": 2497
+          "x": 3777,
+          "y": 2353
         },
         "wait_for_result": true
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Provide a professional and welcoming greeting that includes your name, the business name, appropriate time-based salutation, and express genuine interest in assisting the caller.\n{{agent_name}}\n{{business_name}}"
+          "text": "Deliver welcoming greeting with name, business, time-based salutation.\n{{agent_name}}\n{{business_name}}\n{{dayAndTime}}"
         },
         "name": "Welcome",
         "edges": [
@@ -736,14 +758,14 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 277,
-          "y": 3351
+          "x": 777,
+          "y": 3223
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Provide a graceful farewell that addresses the user."
+          "text": "Deliver graceful farewell."
         },
         "name": "Graceful Goodbye",
         "edges": [
@@ -756,10 +778,11 @@
           }
         ],
         "id": "node-1759778806299",
+        "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 5277,
-          "y": 3377
+          "x": 5777,
+          "y": 3253
         },
         "skip_response_edge": {
           "destination_node_id": "node-1759285139512",
@@ -768,21 +791,49 @@
             "type": "prompt",
             "prompt": "Skip response"
           }
+        }
+      },
+      {
+        "tool_id": "tool-1759818955040",
+        "name": "Get Day and Time",
+        "edges": [
+          {
+            "destination_node_id": "node-1759303421427",
+            "id": "edge-1759821057178",
+            "transition_condition": {
+              "type": "equation",
+              "equations": [
+                {
+                  "left": "{{dayAndTime}}",
+                  "operator": "exists"
+                }
+              ],
+              "operator": "&&"
+            }
+          }
+        ],
+        "id": "node-1759818957400",
+        "type": "function",
+        "tool_type": "local",
+        "speak_during_execution": false,
+        "display_position": {
+          "x": 277,
+          "y": 3314
         },
-        "knowledge_base_ids": []
+        "wait_for_result": true
       }
     ],
-    "start_node_id": "node-1759303421427",
+    "start_node_id": "node-1759818957400",
     "start_speaker": "agent",
     "tools": [
       {
         "headers": {},
-        "parameter_type": "json",
+        "parameter_type": "form",
         "method": "POST",
         "query_params": {},
         "description": "Books an appointment.",
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/bookAppointment",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/bookAppointment",
         "tool_id": "tool-1759287159165",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -790,6 +841,12 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
+          "required": [
+            "name",
+            "date",
+            "time",
+            "phone"
+          ],
           "properties": {
             "name": {
               "type": "string",
@@ -797,31 +854,44 @@
             },
             "date": {
               "type": "string",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
               "description": "Appointment date in YYYY-MM-DD format"
             },
             "time": {
               "type": "string",
-              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
               "description": "Appointment time in 24-hour format HH:MM"
+            },
+            "notes": {
+              "type": "string",
+              "description": "Any additional notes as plain language."
             },
             "phone": {
               "type": "string",
-              "pattern": "^[0-9]{10}(x[0-9]+)?$",
               "description": "10-digit phone number, optional extension (e.g., 1234567890x123)"
             },
             "service": {
-              "type": "string",
-              "description": "Type of appointment or service requested"
+              "description": "Type of service requested (only one can be true)",
+              "type": "object",
+              "required": [
+                "Haircut",
+                "Color",
+                "Styling"
+              ],
+              "properties": {
+                "Styling": {
+                  "type": "boolean",
+                  "description": ""
+                },
+                "Haircut": {
+                  "type": "boolean",
+                  "description": ""
+                },
+                "Color": {
+                  "type": "boolean",
+                  "description": ""
+                }
+              }
             }
-          },
-          "required": [
-            "name",
-            "service",
-            "date",
-            "time",
-            "phone"
-          ]
+          }
         }
       },
       {
@@ -830,37 +900,8 @@
         "method": "POST",
         "query_params": {},
         "description": "Answers a question using a RAG agent.",
-        "response_format": {
-          "type": "object",
-          "properties": {
-            "next_action": {
-              "type": "string",
-              "description": "Suggested next action for handling the request (optional)"
-            },
-            "reason": {
-              "type": "string",
-              "description": "Reason for failure or error (optional)"
-            },
-            "answer": {
-              "type": "string",
-              "description": "The response to the caller's question (only for success status)"
-            },
-            "status": {
-              "type": "string",
-              "description": "Status of the query processing",
-              "enum": [
-                "success",
-                "failure",
-                "error"
-              ]
-            }
-          },
-          "required": [
-            "status"
-          ]
-        },
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/answerQuestion",
         "tool_id": "tool-1759288305078",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -885,12 +926,12 @@
       },
       {
         "headers": {},
-        "parameter_type": "json",
+        "parameter_type": "form",
         "method": "POST",
         "query_params": {},
         "description": "Logs a lead/callback request.",
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/logLead",
         "tool_id": "tool-1759295546196",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -898,6 +939,12 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
+          "required": [
+            "phone",
+            "name",
+            "timestamp",
+            "email"
+          ],
           "properties": {
             "name": {
               "type": "string",
@@ -923,11 +970,7 @@
               "type": "string",
               "description": "Time the lead was logged."
             }
-          },
-          "required": [
-            "phone",
-            "name"
-          ]
+          }
         }
       },
       {
@@ -935,9 +978,9 @@
         "parameter_type": "json",
         "method": "POST",
         "query_params": {},
-        "description": "Identifies possible matching appointments.",
+        "description": "Searches for appointments in Google Calendar and spreadsheet records using provided search criteria. Returns matching appointment details including appointment_id needed for modifications or cancellations.",
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/identifyAppointment",
         "tool_id": "tool-1759299574542",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -945,17 +988,33 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
+          "required": [
+            "name",
+            "phone",
+            "query"
+          ],
           "properties": {
+            "name": {
+              "type": "string",
+              "description": "Caller's full name to search for in appointment records."
+            },
+            "date": {
+              "type": "string",
+              "description": "Appointment date in YYYY-MM-DD format to narrow search results."
+            },
             "context": {
               "type": "string",
-              "description": "Optional contextual hints such as caller name, service type, or approximate date."
+              "description": "Additional contextual information that might help identify the appointment (e.g., service type, stylist name, approximate time)."
+            },
+            "phone": {
+              "type": "string",
+              "description": "Caller's phone number to search for in appointment records."
             },
             "query": {
               "type": "string",
-              "description": "Caller’s natural language description of the appointment they want to modify or cancel."
+              "description": "Natural language search query combining any details the caller provided (e.g., 'haircut appointment next Tuesday' or 'John Smith 2pm')."
             }
-          },
-          "required": []
+          }
         }
       },
       {
@@ -965,7 +1024,7 @@
         "query_params": {},
         "description": "Modifies an existing appointment",
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/modifyAppointment",
         "tool_id": "tool-1759300315801",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -973,20 +1032,19 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
+          "required": [
+            "appointment_id"
+          ],
           "properties": {
             "updates": {
               "type": "object",
-              "description": "An object containing fields to be updated. The exact keys depend on the backend schema (e.g., new_date, new_time, service, notes).",
-              "additionalProperties": true
+              "description": "An object containing fields to be updated. The exact keys depend on the backend schema (e.g., new_date, new_time, service, notes)."
             },
             "appointment_id": {
               "type": "string",
               "description": "Backend-specific identifier for the appointment (Google Calendar event.id, CRM booking ID, etc.)."
             }
-          },
-          "required": [
-            "appointment_id"
-          ]
+          }
         }
       },
       {
@@ -996,7 +1054,7 @@
         "query_params": {},
         "description": "Cancels an appointment.",
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/cancelAppointment",
         "tool_id": "tool-1759300498371",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -1004,6 +1062,9 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
+          "required": [
+            "appointment_id"
+          ],
           "properties": {
             "appointment_id": {
               "type": "string",
@@ -1013,10 +1074,28 @@
               "type": "string",
               "description": "Optional reason for cancellation provided by the caller."
             }
-          },
-          "required": [
-            "appointment_id"
-          ]
+          }
+        }
+      },
+      {
+        "headers": {},
+        "parameter_type": "json",
+        "method": "GET",
+        "query_params": {},
+        "description": "Gets day and time",
+        "type": "custom",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/dayAndTime",
+        "tool_id": "tool-1759818955040",
+        "args_at_root": false,
+        "timeout_ms": 120000,
+        "name": "dayAndTime",
+        "response_variables": {
+          "dayAndTime": "data.currentDate"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
         }
       }
     ],
@@ -1034,7 +1113,7 @@
     },
     "begin_tag_display_position": {
       "x": 0,
-      "y": 3521
+      "y": 3377
     },
     "is_published": false
   },

@@ -46,15 +46,27 @@ All n8n workflows should follow this pattern:
 
 ## Response Format
 
-Always return this structured JSON format:
+Always return this structured JSON response format (see `.github/docs/ERROR_HANDLING.md` for complete standards):
 
 ```json
 {
-  "status": "success|failure|error",
-  "data": {},
-  "message": "Human-readable description"
+  "status": "success" | "failure" | "error",
+  "message": "Human-readable description",
+  "data": {}
 }
 ```
+
+**Status Types:**
+- **success**: Operation completed successfully
+- **failure**: Business logic validation failed (missing fields, conflicts, not found, etc.)
+- **error**: System/technical error (API failures, timeouts, unexpected exceptions)
+
+**All workflows MUST:**
+- Include timestamp in error responses
+- Categorize error types for monitoring
+- Specify retry_possible flag
+- Provide actionable messages
+- Include technical_details for debugging
 
 ## Common Integrations
 

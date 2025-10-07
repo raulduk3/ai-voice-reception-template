@@ -4,117 +4,64 @@
     {
       "parameters": {
         "path": "modifyAppointment",
+        "responseMode": "responseNode",
         "options": {}
       },
-      "id": "8e4c3554-e80f-4a48-8fd3-302bad1d5325",
-      "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [
-        -280,
-        180
+        -160,
+        0
       ],
-      "webhookDescription": "Triggered by Retell agent",
-      "webhookId": "a66f1b98-e2b8-40a9-9dbb-58a770bba285"
+      "id": "d8de19c1-8704-4a38-9a40-fc6fa5856eef",
+      "name": "Webhook",
+      "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
     },
     {
       "parameters": {
-        "calendar": {
-          "__rl": true,
-          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
-          "mode": "list",
-          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
-        },
-        "eventId": "={{$json[\"appointment_id\"]}}",
-        "additionalFields": {
-          "summary": "={{$json[\"updates\"]?.service_type ? $json[\"updates\"].service_type + ' appointment for ' + $json[\"updates\"].name || $json[\"updates\"].service_type : undefined}}",
-          "description": "={{'Phone: ' + ($json[\"updates\"]?.phone || $json[\"phone\"]) + '. Notes: ' + ($json[\"updates\"]?.notes || $json[\"notes\"] || '')}}",
-          "start": "={{$json[\"updates\"]?.date && $json[\"updates\"].time ? $json[\"updates\"].date + 'T' + $json[\"updates\"].time + ':00' : undefined}}",
-          "end": "={{$json[\"updates\"]?.date && $json[\"updates\"].time && $json[\"updates\"].duration ? (new Date(new Date($json[\"updates\"].date + 'T' + $json[\"updates\"].time + ':00').getTime() + ($json[\"updates\"].duration*60000)).toISOString()) : undefined}}"
-        }
-      },
-      "id": "google-update-event",
-      "name": "Google Calendar - Update Event",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1,
-      "position": [
-        40,
-        80
-      ],
-      "credentials": {
-        "googleCalendarOAuth2Api": {
-          "id": "hoMR3q3gb9pxlxTs",
-          "name": "Google Calendar account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "authentication": "oAuth2",
-        "operation": "append",
-        "sheetId": "YOUR_SHEET_ID",
-        "range": "AppointmentChanges!A:E",
         "options": {}
       },
-      "id": "google-sheets-log",
-      "name": "Google Sheets - Log Modification",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 1,
-      "position": [
-        320,
-        80
-      ],
-      "credentials": {
-        "googleSheetsOAuth2Api": {
-          "id": "S8SEj6XfWzKC8Ohj",
-          "name": "Google Sheets"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "options": {},
-        "responseData": "={{$json}}"
-      },
-      "id": "respond-webhook-1",
+      "id": "1e728ae6-e63d-448d-8e44-d716ef7bdf46",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        720,
-        80
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const errorMessage = $json.message || $json.error?.message || 'A system error occurred while modifying an appointment.';\nconst errorType = $json.code || $json.error?.code || 'MODIFY_ERROR';\n\nreturn [{json: {\n  status: 'error',\n  message: errorMessage,\n  data: {\n    error_type: errorType,\n    timestamp: new Date().toISOString(),\n    retry_possible: !errorType.includes('AUTH'),\n    technical_details: $json\n  }\n}}];"
+      },
+      "id": "c5f4b090-33be-4d91-9d3f-4c9a6b7d1d3c",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        60,
+        0
       ]
     }
   ],
   "pinData": {},
   "connections": {
-    "Webhook Trigger": {
+    "Webhook": {
       "main": [
         [
           {
-            "node": "Google Calendar - Update Event",
+            "node": "Error Handler",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Calendar - Update Event": {
+    "Error Handler": {
       "main": [
         [
           {
-            "node": "Google Sheets - Log Modification",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Sheets - Log Modification": {
-      "main": [
-        [
-          {
-            "node": "Respond to Retell",
+            "node": "Respond to Webhook",
             "type": "main",
             "index": 0
           }
@@ -122,11 +69,11 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "4576fd8b-6107-4c7e-b186-ed0c19cede6a",
+  "versionId": "cf808c95-6248-44d2-a0b1-5e14ec74e360",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"

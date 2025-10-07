@@ -22,14 +22,15 @@
       "transfer_phone_number": "+17734699726"
     },
     "webhooks": {
-      "base_url": "https://n8n.srv836523.hstgr.cloud/webhook-test",
+      "base_url": "https://n8n.srv836523.hstgr.cloud",
       "tools": {
-        "bookAppointment": "bookAppointment",
-        "answerQuestion": "answerQuestion",
-        "logLead": "logLead",
-        "identifyAppointment": "identifyAppointment",
-        "modifyAppointment": "modifyAppointment",
-        "cancelAppointment": "cancelAppointment"
+        "bookAppointment": "webhook/bookAppointment",
+        "answerQuestion": "webhook-test/answerQuestion",
+        "logLead": "webhook/logLead",
+        "identifyAppointment": "webhook-test/identifyAppointment",
+        "modifyAppointment": "webhook-test/modifyAppointment",
+        "cancelAppointment": "webhook-test/cancelAppointment",
+        "dayAndTime": "webhook/dayAndTime"
       }
     }
   },
