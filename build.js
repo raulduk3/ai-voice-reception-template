@@ -116,89 +116,125 @@ class LayerBuilder {
 
   async loadTemplateVariables() {
     try {
-      // Load business configuration
+      // Load configuration
       try {
         this.config = JSON.parse(await fs.readFile("config.json", "utf8"));
       } catch {
-        console.log(
-          "📋 No config.json found, using auto-generation from repository"
-        );
-        this.config = {
-          business: {},
-          templating: { auto_generate_from_repo: true }
-        };
+        console.log("📋 No config.json found, using defaults");
+        this.config = { templating: { auto_generate_from_repo: true } };
       }
-      
-      const config = this.config; // Keep local reference for compatibility
 
-      // Load package.json for repository information
       const packageJson = JSON.parse(await fs.readFile("package.json", "utf8"));
-
-      // Set up template variables based on config or auto-generation
       const buildDate = new Date().toISOString();
-      if (config.templating?.auto_generate_from_repo !== false) {
+
+      // PHASE 1: Template Variables (for filenames and general templating)
+      if (this.config.templating?.auto_generate_from_repo !== false) {
         const repoName = packageJson.name || "ai-voice-receptionist";
-        const businessName = config.business?.name || this.generateBusinessName(repoName);
+        const businessName = this.config.templating?.variables?.business_name || 
+                           this.generateBusinessName(repoName);
+        
         this.templateVariables = {
           build_date: buildDate,
-          today: new Date().toLocaleDateString(),
           repository_name: repoName,
           version: packageJson.version || "1.0.0",
-          business_name: config.business?.name || businessName,
-          agent_display_name: config.business?.agent_display_name || `${businessName} AI Voice Receptionist`,
-          agent_human_name: config.business?.agent_human_name || businessName.split(" ")[0],
-          ai_support_hours: config.business?.ai_support_hours || "24/7",
-          transfer_phone_number: config.infrastructure?.transfer_phone_number || "+1234567890",
-          voice_id: config.voice_settings?.voice_id || "11labs-Cimo",
-          max_call_duration_ms: config.voice_settings?.max_call_duration_ms || 600000,
-          interruption_sensitivity: config.voice_settings?.interruption_sensitivity || 0.9,
-          ...(config.dynamic_variables || {})
+          business_name: businessName,
+          agent_display_name: this.config.templating?.variables?.agent_display_name || 
+                            `${businessName} AI Voice Receptionist`,
+          agent_human_name: this.config.templating?.variables?.agent_human_name || 
+                          businessName.split(" ")[0]
         };
       } else {
+        // Use explicit config values
         this.templateVariables = {
           build_date: buildDate,
-          today: new Date().toLocaleDateString(),
           repository_name: packageJson.name || "ai-voice-receptionist",
           version: packageJson.version || "1.0.0",
-          business_name: config.business?.name || "Your Business",
-          agent_display_name: config.business?.agent_display_name || "Your Business AI Voice Receptionist",
-          agent_human_name: config.business?.agent_human_name || "Assistant",
-          ai_support_hours: config.business?.ai_support_hours || "24/7",
-          transfer_phone_number: config.infrastructure?.transfer_phone_number || "+1234567890",
-          voice_id: config.voice_settings?.voice_id || "11labs-Cimo",
-          max_call_duration_ms: config.voice_settings?.max_call_duration_ms || 600000,
-          interruption_sensitivity: config.voice_settings?.interruption_sensitivity || 0.9,
-          ...(config.dynamic_variables || {})
+          ...this.config.templating?.variables || {
+            business_name: "Your Business",
+            agent_display_name: "Your Business AI Voice Receptionist",
+            agent_human_name: "Assistant"
+          }
         };
       }
 
-      // Store config for later use
-      this.businessConfig = config;
-
-      console.log("✅ Template variables loaded successfully");
-    } catch (error) {
-      console.warn(
-        "⚠️ Could not load configuration, using defaults:",
-        error.message
-      );
-      // Fallback defaults
-      this.templateVariables = {
-        repository_name: "ai-voice-receptionist",
-        version: "1.0.0",
-        business_name: "Your Business",
-        agent_display_name: "Your Business AI Voice Receptionist",
-        agent_human_name: "Assistant",
-        ai_support_hours: "24/7",
-        transfer_phone_number: "+1234567890",
-        voice_id: "11labs-Cimo",
-        max_call_duration_ms: 600000,
-        interruption_sensitivity: 0.9
+      // PHASE 2: Build Config (for direct agent JSON modification)
+      this.buildConfig = {
+        voice_settings: this.config.build_config?.voice_settings || {
+          voice_id: "11labs-Cimo",
+          max_call_duration_ms: 600000,
+          interruption_sensitivity: 0.9
+        },
+        infrastructure: this.config.build_config?.infrastructure || {
+          transfer_phone_number: "+1234567890"
+        },
+        webhooks: this.config.build_config?.webhooks || {
+          base_url: "https://n8n.srv836523.hstgr.cloud/webhook",
+          tools: {}
+        }
       };
-      this.businessConfig = {};
+
+      // PHASE 3: Runtime Variables (for Retell dynamic_variables)
+      // Merge template variables with explicit runtime_variables from config
+      const defaultRuntimeVars = {
+        build_date: this.templateVariables.build_date,
+        repository_name: this.templateVariables.repository_name,
+        version: this.templateVariables.version,
+        business_name: this.templateVariables.business_name,
+        agent_display_name: this.templateVariables.agent_display_name,
+        agent_name: this.templateVariables.agent_human_name,
+        agent_human_name: this.templateVariables.agent_human_name,
+        ai_support_hours: "24/7",
+        transfer_phone_number: this.buildConfig.infrastructure.transfer_phone_number
+      };
+      
+      // Override/extend with explicit runtime_variables from config
+      this.runtimeVariables = {
+        ...defaultRuntimeVars,
+        ...(this.config.runtime_variables || {})
+      };
+
+      console.log("✅ Configuration loaded successfully");
+      console.log(`📋 Template Variables: ${Object.keys(this.templateVariables).join(", ")}`);
+    } catch (error) {
+      console.warn("⚠️ Could not load configuration, using defaults:", error.message);
+      this.setDefaults();
     }
     
     // Load prompts after template variables are set
     await this.loadPrompts();
+  }
+
+  setDefaults() {
+    const buildDate = new Date().toISOString();
+    this.templateVariables = {
+      build_date: buildDate,
+      repository_name: "ai-voice-receptionist",
+      version: "1.0.0",
+      business_name: "Your Business",
+      agent_display_name: "Your Business AI Voice Receptionist",
+      agent_human_name: "Assistant"
+    };
+    this.buildConfig = {
+      voice_settings: {
+        voice_id: "11labs-Cimo",
+        max_call_duration_ms: 600000,
+        interruption_sensitivity: 0.9
+      },
+      infrastructure: { transfer_phone_number: "+1234567890" },
+      webhooks: { base_url: "https://n8n.srv836523.hstgr.cloud/webhook", tools: {} }
+    };
+    this.runtimeVariables = {
+      build_date: buildDate,
+      repository_name: "ai-voice-receptionist",
+      version: "1.0.0",
+      business_name: "Your Business",
+      agent_display_name: "Your Business AI Voice Receptionist",
+      agent_name: "Assistant",
+      agent_human_name: "Assistant",
+      ai_support_hours: "24/7",
+      transfer_phone_number: "+1234567890"
+    };
+    this.config = {};
   }
 
   async loadPrompts() {
@@ -257,6 +293,7 @@ class LayerBuilder {
     }
 
     // For other files, return as-is (no templating in prompts/markdown)
+    // Prompts need to keep {{variables}} for Retell runtime replacement
     return content;
   }
 
@@ -264,43 +301,36 @@ class LayerBuilder {
     try {
       const jsonData = JSON.parse(content);
 
-      // Update main agent configuration fields
+      // PHASE 1: Apply Build Config (direct agent settings)
       if (jsonData.agent_name !== undefined) {
         jsonData.agent_name = this.templateVariables.agent_display_name;
       }
 
-      // Update voice and call settings
+      // Apply voice settings from build_config
       if (jsonData.voice_id !== undefined) {
-        jsonData.voice_id = this.templateVariables.voice_id;
+        jsonData.voice_id = this.buildConfig.voice_settings.voice_id;
       }
       if (jsonData.max_call_duration_ms !== undefined) {
-        jsonData.max_call_duration_ms =
-          this.templateVariables.max_call_duration_ms;
+        jsonData.max_call_duration_ms = this.buildConfig.voice_settings.max_call_duration_ms;
       }
       if (jsonData.interruption_sensitivity !== undefined) {
-        jsonData.interruption_sensitivity =
-          this.templateVariables.interruption_sensitivity;
+        jsonData.interruption_sensitivity = this.buildConfig.voice_settings.interruption_sensitivity;
       }
 
-      // Update global prompt if core prompt is loaded
+      // PHASE 2: Inject Prompts (with {{variables}} preserved)
       if (this.corePrompt && jsonData.conversationFlow?.global_prompt !== undefined) {
-        // Inject the raw corePrompt, preserving all template variables for runtime
         jsonData.conversationFlow.global_prompt = this.corePrompt;
       }
 
-      // Update dynamic variables if they exist
-      if (jsonData.conversationFlow?.default_dynamic_variables) {
-        const dynVars = jsonData.conversationFlow.default_dynamic_variables;
-        // Unify and inject all template variables at build time
-        for (const [key, value] of Object.entries(this.templateVariables)) {
-          dynVars[key] = value;
-        }
+      // PHASE 3: Hydrate Runtime Variables (for Retell dynamic_variables)
+      if (jsonData.conversationFlow?.default_dynamic_variables !== undefined) {
+        jsonData.conversationFlow.default_dynamic_variables = {
+          ...this.runtimeVariables
+        };
       }
 
-      // Update webhook URLs in tools
+      // PHASE 4: Update infrastructure (webhooks, transfer numbers)
       this.updateToolWebhookUrls(jsonData.conversationFlow?.tools);
-
-      // Update transfer phone number in transfer nodes
       this.updateTransferNodes(jsonData.conversationFlow?.nodes);
 
       return JSON.stringify(jsonData, null, 2);
@@ -356,24 +386,23 @@ class LayerBuilder {
 
     nodes.forEach(node => {
       if (node.type === "transfer_call" && node.transfer_destination?.number) {
-        node.transfer_destination.number =
-          this.templateVariables.transfer_phone_number;
+        node.transfer_destination.number = this.buildConfig.infrastructure.transfer_phone_number;
       }
     });
   }
 
   updateToolWebhookUrls(tools) {
-    if (!tools || !this.config.webhooks) return;
+    if (!tools || !this.buildConfig.webhooks.tools) return;
 
-    const webhooks = this.config.webhooks;
-    const baseUrl = webhooks.base_url || "https://n8n.srv836523.hstgr.cloud/webhook";
+    const webhooks = this.buildConfig.webhooks;
+    const baseUrl = webhooks.base_url;
 
     tools.forEach(tool => {
       if (tool.type === "custom" && tool.url && tool.name) {
         // Get webhook ID for this tool from config
-        const webhookId = webhooks[tool.name];
+        const webhookId = webhooks.tools[tool.name];
         if (webhookId) {
-          tool.url = `${webhookId}`;
+          tool.url = `${baseUrl}/${webhookId}`;
         }
       }
     });

@@ -40,7 +40,7 @@
   "conversationFlow": {
     "conversation_flow_id": "conversation_flow_810ce3958ea3",
     "version": 1,
-    "global_prompt": "",
+    "global_prompt": "Last updated: {{last_updated}}\n\nYou are {{agent_name}}, the AI receptionist for {{business_name}}. Your role is to answer inbound\nphone calls in a polite, natural, and professional manner. You must use the defined actions to\nhandle requests such as booking, modifying, or canceling appointments, answering questions, and\nlogging leads.\n\n## Core Instructions\n\n- Track the entire conversation until the call ends.\n- Collect information gradually and confirm back to the caller before executing an action.\n- Do not invent or assume business details.\n- NEVER disclose customer-specific booking details through `answerQuestion` or general responses.\n- All requests for personal appointment information must be routed through `identifyAppointment`.\n- When an action is executed, assume the client's system handles confirmations and reminders.\n- Always ensure required fields for any action are collected and confirmed with the caller.\n\n## Appointment Booking\n\n- For `bookAppointment`, collect and confirm all required fields before calling.\n- Ask naturally for each piece of information (service, stylist, date, time, location, notes).\n- Never call until the schema is satisfied.\n\n## Appointment Modification\n\n- For `modifyAppointment`, first identify the appointment (use `identifyAppointment` if needed).\n- Collect identifying details (name, phone, date/time).\n- Gather all requested changes and confirm before executing.\n\n## Appointment Cancellation\n\n- For `cancelAppointment`, first identify the appointment.\n- Collect identifying details and the date/time.\n- Confirm the cancellation before executing.\n\n## Appointment Identification\n\n- For `identifyAppointment`, use the caller's description to retrieve matches.\n- If multiple or none, ask clarifying questions until one is identified.\n- Only then proceed with modification or cancellation.\n\n## FAQs\n\n- Use built-in FAQ data first.\n- For general, non-personal questions (services, hours, policies), call `answerQuestion`.\n- NEVER use `answerQuestion` for specific appointments or customer details.\n- If uncertain, call `logLead` for follow-up.\n\n## AI Supported Hours\n\n{{ai_support_hours}}\n\n## Actions Available\n\n- `bookAppointment`\n- `identifyAppointment`\n- `modifyAppointment`\n- `cancelAppointment`\n- `answerQuestion`\n- `logLead`\n\n## Closing\n\nAlways close politely:  \n\"Thank you for calling {{business_name}}, we look forward to seeing you.\"\n",
     "nodes": [
       {
         "instruction": {
@@ -255,7 +255,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Collect all necessary appointment information from the caller to execute the bookAppointment action successfully. Use the canonical fields: {{appointment_fields_list}}. Ask for required fields first (service_type, date, time, duration, name, phone), then optional fields (notes, resource, location, custom_fields). Confirm each value with the caller. When collection is complete, present (1) a human-friendly sentence summary of the appointment and (2) a structured JSON object using the canonical keys: {\"service_type\":..., \"date\":..., \"time\":..., \"duration\":..., \"name\":..., \"phone\":..., \"notes\":..., \"resource\":..., \"location\":..., \"custom_fields\":...}. Only call bookAppointment after the caller confirms the structured summary."
+          "text": "Collect all necessary appointment information from the caller to execute the bookAppointment action successfully."
         },
         "name": "Gather New Appointment Details",
         "edges": [
@@ -530,7 +530,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Collect appointment information needed to identify the caller's booking. Consult the identify action schema and collect the candidate fields: name, phone, date, service_type; you may also gather optional context or a short natural-language query. You MUST verify at least two identifying factors (for example: name + phone, or name + date) before proceeding to lookup. Do not query the backend until you have confirmed at least two matching factors from the caller."
+          "text": "Collect comprehensive appointment information from the caller to successfully identify and locate the specific appointment they wish to modify or cancel.  You MUST collect and verify at least TWO of the following for multi-factor authentication: (1) Full name, (2) Phone number, (3) Specific appointment date/time. Do not proceed to appointment lookup until you have confirmed at least two matching factors from the caller."
         },
         "name": "Identify Appointment",
         "edges": [
@@ -810,33 +810,16 @@
               "pattern": "^[0-9]{10}(x[0-9]+)?$",
               "description": "10-digit phone number, optional extension (e.g., 1234567890x123)"
             },
-            "service_type": {
+            "service": {
               "type": "string",
-              "description": "Type of service requested (e.g., haircut, color, styling)"
-            },
-            "duration": {
-              "type": "integer",
-              "description": "Duration of the appointment in minutes"
-            },
-            "notes": {
-              "type": "string",
-              "description": "Optional notes or special requests"
-            },
-            "resource": {
-              "type": "string",
-              "description": "Optional staff/stylist or resource assigned to the appointment"
-            },
-            "location": {
-              "type": "string",
-              "description": "Optional location for the appointment"
+              "description": "Type of appointment or service requested"
             }
           },
           "required": [
-            "service_type",
+            "name",
+            "service",
             "date",
             "time",
-            "duration",
-            "name",
             "phone"
           ]
         }
@@ -952,7 +935,7 @@
         "parameter_type": "json",
         "method": "POST",
         "query_params": {},
-  "description": "Identifies possible matching appointments. Accepts structured fields (name, phone, date, service_type, context, query).",
+        "description": "Identifies possible matching appointments.",
         "type": "custom",
         "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
         "tool_id": "tool-1759299574542",
@@ -963,31 +946,13 @@
         "parameters": {
           "type": "object",
           "properties": {
-            "name": {
-              "type": "string",
-              "description": "Full name of the caller (if provided)."
-            },
-            "phone": {
-              "type": "string",
-              "pattern": "^[0-9]{10}(x[0-9]+)?$",
-              "description": "10-digit phone number, optional extension (e.g., 1234567890x123)."
-            },
-            "date": {
-              "type": "string",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-              "description": "Approximate or exact appointment date in YYYY-MM-DD format."
-            },
-            "service_type": {
-              "type": "string",
-              "description": "Service or appointment type (e.g., haircut, color) if the caller remembers it."
-            },
             "context": {
               "type": "string",
-              "description": "Optional contextual hints (free text)."
+              "description": "Optional contextual hints such as caller name, service type, or approximate date."
             },
             "query": {
               "type": "string",
-              "description": "Natural-language description of the appointment (free text)."
+              "description": "Caller’s natural language description of the appointment they want to modify or cancel."
             }
           },
           "required": []
@@ -998,7 +963,7 @@
         "parameter_type": "json",
         "method": "POST",
         "query_params": {},
-  "description": "Modifies an existing appointment. Provide appointment_id and either an updates object or individual optional fields to change.",
+        "description": "Modifies an existing appointment",
         "type": "custom",
         "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
         "tool_id": "tool-1759300315801",
@@ -1009,14 +974,14 @@
         "parameters": {
           "type": "object",
           "properties": {
+            "updates": {
+              "type": "object",
+              "description": "An object containing fields to be updated. The exact keys depend on the backend schema (e.g., new_date, new_time, service, notes).",
+              "additionalProperties": true
+            },
             "appointment_id": {
               "type": "string",
               "description": "Backend-specific identifier for the appointment (Google Calendar event.id, CRM booking ID, etc.)."
-            },
-            "updates": {
-              "type": "object",
-              "description": "An object containing fields to be updated. The exact keys depend on the backend schema (e.g., service_type, date, time, duration, notes, resource).",
-              "additionalProperties": true
             }
           },
           "required": [
@@ -1029,7 +994,7 @@
         "parameter_type": "json",
         "method": "POST",
         "query_params": {},
-  "description": "Cancels an appointment. Provide the backend appointment_id and an optional reason for cancellation.",
+        "description": "Cancels an appointment.",
         "type": "custom",
         "url": "https://n8n.srv836523.hstgr.cloud/webhook/7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
         "tool_id": "tool-1759300498371",
@@ -1061,10 +1026,7 @@
     },
     "model_temperature": 0,
     "tool_call_strict_mode": true,
-    "default_dynamic_variables": {
-      "appointment_presentation": "{{appointment_presentation}}",
-      "appointment_fields_list": "service_type, date, time, duration, name, phone, notes, resource, location, custom_fields"
-    },
+    "default_dynamic_variables": {},
     "knowledge_base_ids": [],
     "kb_config": {
       "top_k": 4,

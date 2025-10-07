@@ -1,27 +1,45 @@
 {
-  "business": {
-    "agent_display_name": "Layer 7 Salon Receptionist (PoC)",
+  "_comment": "Layer 7 AI Voice Receptionist Template Configuration",
+  
+  "templating": {
+    "_comment": "Variables used for filename and general template replacement during build",
+    "auto_generate_from_repo": false,
+    "variables": {
+      "business_name": "Caroline Smith's Salon",
+      "agent_display_name": "Layer 7 Salon Receptionist (PoC)",
+      "agent_human_name": "Myra"
+    }
+  },
+
+  "build_config": {
+    "_comment": "Direct Retell agent configuration applied at build time",
+    "voice_settings": {
+      "voice_id": "11labs-Cimo",
+      "max_call_duration_ms": 600000,
+      "interruption_sensitivity": 0.9
+    },
+    "infrastructure": {
+      "transfer_phone_number": "+17734699726"
+    },
+    "webhooks": {
+      "base_url": "https://n8n.srv836523.hstgr.cloud/webhook-test",
+      "tools": {
+        "bookAppointment": "bookAppointment",
+        "answerQuestion": "answerQuestion",
+        "logLead": "logLead",
+        "identifyAppointment": "identifyAppointment",
+        "modifyAppointment": "modifyAppointment",
+        "cancelAppointment": "cancelAppointment"
+      }
+    }
+  },
+
+  "runtime_variables": {
+    "_comment": "Variables injected into default_dynamic_variables for Retell runtime replacement in prompts. These are merged with template variables (build_date, today, version, etc.). Config values override defaults.",
+    "business_name": "Caroline Smith's Salon",
+    "agent_name": "Myra",
     "agent_human_name": "Myra",
     "ai_support_hours": "24/7",
-    "name": "Caroline Smith's Salon"
-  },
-  "infrastructure": {
     "transfer_phone_number": "+17734699726"
-  },
-  "webhooks": {
-    "base_url": "https://n8n.srv836523.hstgr.cloud/webhook",
-    "bookAppointment": "7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
-    "answerQuestion": "7c6da3f9-7c6f-4f9b-af61-f4670b81b271", 
-    "logLead": "7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
-    "identifyAppointment": "7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
-    "modifyAppointment": "7c6da3f9-7c6f-4f9b-af61-f4670b81b271",
-    "cancelAppointment": "7c6da3f9-7c6f-4f9b-af61-f4670b81b271"
-  },
-  "voice_settings": {
-    "voice_id": "11labs-Cimo",
-    "max_call_duration_ms": 600000,
-    "interruption_sensitivity": 0.9
-  },
-  "dynamic_variables": {},
-  "auto_generate_from_repo": false
+  }
 }
