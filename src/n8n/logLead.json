@@ -1,5 +1,4 @@
 {
-  "name": "logLead",
   "nodes": [
     {
       "parameters": {
@@ -161,7 +160,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// Only process if this is actual Google Sheets success data, not a failure object\nif ($json.status === 'failure' || $json.status === 'error') {\n  return [];\n}\n\nconst args = $json.args || $json;\nreturn [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: args.name,\n    phone: args.phone,\n    email: args.email || null,\n    service_interest: args.service_interest || null,\n    notes: args.notes || null,\n    timestamp: args.timestamp\n  }\n}}];"
+        "functionCode": "// Only process successful Google Sheets operations\n// Filter out validation failures and errors\nif ($json.status === 'failure' || $json.status === 'error' || $json.error) {\n  return [];\n}\n\n// This should only execute for successful Google Sheets append\nconst args = $input.first().json.args;\nreturn [{json: {\n  status: 'success',\n  message: 'Lead logged successfully.',\n  data: {\n    name: args.name,\n    phone: args.phone,\n    email: args.email || null,\n    service_interest: args.service_interest || null,\n    notes: args.notes || null,\n    timestamp: args.timestamp\n  }\n}}];"
       },
       "id": "700af63a-78a7-4153-a406-38fa42f0989e",
       "name": "Format Success",
@@ -212,7 +211,6 @@
       ]
     }
   ],
-  "pinData": {},
   "connections": {
     "Google Sheets": {
       "main": [
@@ -302,15 +300,9 @@
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "8a66f15e-ebc7-44cd-b4fe-87cb2b474b85",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
-  },
-  "id": "ahIUCg31KnqDMELW",
-  "tags": []
+  }
 }
