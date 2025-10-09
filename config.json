@@ -5,9 +5,78 @@
     "_comment": "Variables used for filename and general template replacement during build",
     "auto_generate_from_repo": false,
     "variables": {
-      "business_name": "Caroline Smith's Salon",
-      "agent_display_name": "Layer 7 Salon Receptionist (PoC)",
-      "agent_human_name": "Myra"
+      "business_name": "Richard Álvarez Sole Proprietor",
+      "agent_name": "RÁ Sole Proprietor General Receptionist"
+    }
+  },
+
+  "client_data": {
+    "_comment": "Client-specific business information used to generate knowledge base and sheets",
+    "business_info": {
+      "name": "Richard Álvarez Sole Proprietor",
+      "tagline": "Freelance Web Developer & AI Engineer",
+      "email": "richard@richardalvarez.info",
+      "phone": "+17734699726",
+      "website": "https://richardalvarez.info",
+      "address": {
+        "street": "",
+        "city": "Remote",
+        "state": "",
+        "zip": "",
+        "country": "USA"
+      },
+      "timezone": "America/Chicago",
+      "description": "Richard Alvarez is an independent web developer and AI systems engineer. He builds web applications, automation systems, and AI-powered tools for small businesses, creative professionals, and startups."
+    },
+    "services": [
+      {
+        "name": "Consultation",
+        "duration_minutes": 60,
+        "description": "Initial consultation to discuss project requirements and scope",
+        "price": ""
+      },
+      {
+        "name": "Follow-Up",
+        "duration_minutes": 45,
+        "description": "Follow-up meeting for ongoing projects",
+        "price": ""
+      }
+    ],
+    "business_hours": {
+      "monday": "9:00 AM - 5:00 PM",
+      "tuesday": "9:00 AM - 5:00 PM",
+      "wednesday": "9:00 AM - 5:00 PM",
+      "thursday": "9:00 AM - 5:00 PM",
+      "friday": "9:00 AM - 5:00 PM",
+      "saturday": "Closed",
+      "sunday": "Closed",
+      "display": "Mon-Fri 9am-5pm, Sat-Sun closed",
+      "notes": ""
+    },
+    "booking": {
+      "advance_notice_required": "24 hours",
+      "cancellation_policy": "24 hours notice required",
+      "payment_methods": [],
+      "booking_instructions": "All appointments must be scheduled through the AI receptionist or by calling the main number."
+    },
+    "faq": [
+      {
+        "question": "Do I need an appointment?",
+        "answer": "Yes, all consultations require an appointment to ensure dedicated time."
+      },
+      {
+        "question": "How far in advance should I book?",
+        "answer": "At least 24 hours in advance for most services."
+      },
+      {
+        "question": "What is your cancellation policy?",
+        "answer": "Please provide at least 24 hours notice for cancellations."
+      }
+    ],
+    "policies": {
+      "no_show_policy": "",
+      "late_arrival_policy": "",
+      "refund_policy": ""
     }
   },
 
@@ -27,7 +96,7 @@
         "bookAppointment": "webhook/bookAppointment",
         "answerQuestion": "webhook-test/answerQuestion",
         "logLead": "webhook/logLead",
-        "identifyAppointment": "webhook-test/identifyAppointment",
+        "identifyAppointment": "webhook/identifyAppointment",
         "modifyAppointment": "webhook-test/modifyAppointment",
         "cancelAppointment": "webhook-test/cancelAppointment",
         "dayAndTime": "webhook/dayAndTime"
@@ -36,11 +105,13 @@
   },
 
   "runtime_variables": {
-    "_comment": "Variables injected into default_dynamic_variables for Retell runtime replacement in prompts. These are merged with template variables (build_date, today, version, etc.). Config values override defaults.",
-    "business_name": "Caroline Smith's Salon",
-    "agent_name": "Myra",
-    "agent_human_name": "Myra",
-    "ai_support_hours": "24/7",
+    "_comment": "Variables injected into default_dynamic_variables for Retell runtime replacement in prompts. These are merged with template variables (build_date, version, etc.). Config values override defaults.",
+    "business_name": "Richard Álvarez Sole Proprietor",
+    "business_hours": "Mon-Fri 9am-5pm, Sat, Sun closed",
+    "business_timezone": "America/Chicago",
+    "appointment_types": "Consultations, Follow-ups",
+    "agent_name": "Smith",
+    "ai_support_hours": "Mon-Fri 12pm-4pm",
     "transfer_phone_number": "+17734699726"
   }
 }

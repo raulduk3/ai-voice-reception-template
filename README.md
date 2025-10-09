@@ -199,18 +199,7 @@ The build system automatically:
 | `/retell-flow` | Modify conversation flows |
 | `/n8n-workflow` | Create/modify workflows |
 | `/secure-prompt` | Update prompts with security |
-| `/extend-template` | Extend system features |
 
-## Deployment
-
-### 1. Retell.ai Setup
-Upload `dist/[Business Name] - Retell Agent.json` to Retell.ai
-
-### 2. n8n Setup  
-Import workflow files from `dist/` directory
-
-### 3. Test Integration
-Verify webhook endpoints and conversation flows
 
 ## Security
 
@@ -372,8 +361,7 @@ Use `/n8n-workflow Create review request system` to build a workflow that:
 1. **Add New Tools**: Update `config.json` webhooks, create matching n8n workflow
 2. **Modify Flows**: Use `/retell-flow` Copilot command for conversation logic
 3. **Update Prompts**: Edit markdown files in `template/prompts/`  
-4. **Extend Templates**: Use `/extend-template` Copilot command for system features
-5. **Custom Actions**: Define new action schemas with proper parameter validation
+4. **Custom Actions**: Define new action schemas with proper parameter validation
 
 ### Troubleshooting
 

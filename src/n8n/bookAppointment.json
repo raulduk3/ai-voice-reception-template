@@ -1,19 +1,5 @@
 {
-  "name": "bookAppointment",
   "nodes": [
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "329df74b-6e0c-46ab-b9e4-ff9d64040137",
-      "name": "Respond to Webhook",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        -440,
-        100
-      ]
-    },
     {
       "parameters": {
         "httpMethod": "POST",
@@ -24,41 +10,633 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -880,
-        100
+        -3160,
+        365
       ],
-      "id": "c4c96dc0-32f3-438e-b19d-22dfcef59ce5",
+      "id": "bc9f408f-55d8-44f3-b390-16c591fca1d1",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
     },
     {
       "parameters": {
-        "functionCode": "const errorMessage = $json.message || $json.error?.message || 'A system error occurred while booking.';\nconst errorType = $json.code || $json.error?.code || 'BOOKING_ERROR';\n\nreturn [{json: {\n  status: 'error',\n  message: errorMessage,\n  data: {\n    error_type: errorType,\n    timestamp: new Date().toISOString(),\n    retry_possible: !errorType.includes('AUTH'),\n    technical_details: $json\n  }\n}}];"
+        "jsCode": "// Extract and validate appointment data from webhook body\n// Uses n8n code node pattern: process each item and return to single output\nconst items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const body = item.json.body;\n  \n  // Validate required fields\n  const required = ['name', 'date', 'time', 'phone', 'service', 'timezone'];\n  const missing = required.filter(f => !body[f]);\n  \n  if (missing.length > 0) {\n    output.push({\n      json: {\n        status: 'failure',\n        message: `Missing required fields: ${missing.join(', ')}`,\n        data: {\n          missing_fields: missing,\n          timestamp: new Date().toISOString()\n        }\n      }\n    });\n    continue;\n  }\n  \n  // Extract selected service from service object\n  const serviceObj = body.service;\n  const selectedService = Object.keys(serviceObj).find(key => serviceObj[key] === true);\n  \n  if (!selectedService) {\n    output.push({\n      json: {\n        status: 'failure',\n        message: 'No service selected',\n        data: {\n          timestamp: new Date().toISOString()\n        }\n      }\n    });\n    continue;\n  }\n  \n  // Validate date format (YYYY-MM-DD)\n  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(body.date)) {\n    output.push({\n      json: {\n        status: 'failure',\n        message: 'Invalid date format. Expected YYYY-MM-DD',\n        data: {\n          provided_date: body.date,\n          timestamp: new Date().toISOString()\n        }\n      }\n    });\n    continue;\n  }\n  \n  // Validate time format (HH:MM)\n  if (!/^\\d{2}:\\d{2}$/.test(body.time)) {\n    output.push({\n      json: {\n        status: 'failure',\n        message: 'Invalid time format. Expected HH:MM',\n        data: {\n          provided_time: body.time,\n          timestamp: new Date().toISOString()\n        }\n      }\n    });\n    continue;\n  }\n  \n  // Validate timezone format (basic check for IANA timezone)\n  if (!body.timezone || body.timezone.length < 3) {\n    output.push({\n      json: {\n        status: 'failure',\n        message: 'Invalid or missing timezone',\n        data: {\n          provided_timezone: body.timezone,\n          timestamp: new Date().toISOString()\n        }\n      }\n    });\n    continue;\n  }\n  \n  // Success: Add validated data\n  output.push({\n    json: {\n      name: body.name,\n      date: body.date,\n      time: body.time,\n      phone: body.phone,\n      service: selectedService,\n      timezone: body.timezone,\n      notes: body.notes || ''\n    }\n  });\n}\n\nreturn output;"
       },
-      "id": "e7c00f74-ecf3-4c46-9e77-1b1d3ddb6332",
-      "name": "Error Handler",
-      "type": "n8n-nodes-base.function",
+      "id": "8103b35e-4afd-4ef4-90d7-78ddf0f005c8",
+      "name": "Validate & Extract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2940,
+        365
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "fdd8cff0-48a4-49ac-92db-5f4c4f6ae4b7",
+              "leftValue": "={{ $json.service }}",
+              "rightValue": "={{ $json[\"Service Type\"] }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e281499d-1130-4eed-9562-1ebb8ec8c8c5",
+      "name": "Check Calculate Result",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2060,
+        565
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
+          "mode": "list",
+          "cachedResultName": "Fake CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1375861924,
+          "mode": "list",
+          "cachedResultName": "Service Types",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit#gid=1375861924"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -2720,
+        1190
+      ],
+      "id": "4752f74c-17ce-4207-bdc1-747f7c21f7bc",
+      "name": "Get Service Types",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "service",
+              "field2": "Service Type"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b48f7226-605b-4579-a4ba-21d4a59a9d48",
+      "name": "Merge Appointment with Services",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -2500,
+        565
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Match service to duration from Service Types sheet\n// TIMEZONE HANDLING: Uses pure arithmetic to calculate end time in LOCAL timezone\n// Google Calendar API will interpret datetime strings in the timezone specified via timeZone parameter\nconst items = $input.all();\nconst output = [];\n\nfor (const item of items) {\n  const appointmentData = item.json;\n  \n  // Check if this is a failure from previous node\n  if (appointmentData.status === 'failure') {\n    output.push({ json: appointmentData });\n    continue;\n  }\n  \n  // Validate service type exists\n  if (!appointmentData[\"Service Type\"]) {\n    output.push({\n      json: {\n        status: 'failure',\n        message: `Service type '${appointmentData.service}' not found`,\n        data: {\n          requested_service: appointmentData.service,\n          timestamp: new Date().toISOString()\n        }\n      }\n    });\n    continue;\n  }\n  \n  const durationMinutes = parseInt(appointmentData['Duration (minutes)']);\n  const timezone = appointmentData.timezone; // IANA timezone (e.g., \"America/Chicago\")\n  \n  // Parse start time components from the booking time string (HH:MM format)\n  const [startHours, startMinutes] = appointmentData.time.split(':').map(Number);\n  \n  // Calculate end time using pure arithmetic (avoids JavaScript Date timezone conversion)\n  // This keeps calculations in the LOCAL timezone specified by the caller\n  let totalMinutes = startHours * 60 + startMinutes + durationMinutes;\n  const daysToAdd = Math.floor(totalMinutes / (24 * 60)); // Handle day overflow\n  const endHours = Math.floor(totalMinutes / 60) % 24;\n  const endMinutes = totalMinutes % 60;\n  \n  // Format end time\n  const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;\n  \n  // Calculate end date (handle appointments that cross midnight)\n  let endDate = appointmentData.date;\n  if (daysToAdd > 0) {\n    const startDateObj = new Date(appointmentData.date + 'T00:00:00');\n    startDateObj.setDate(startDateObj.getDate() + daysToAdd);\n    endDate = startDateObj.toISOString().split('T')[0];\n  }\n  \n  // Create timezone-aware datetime strings\n  // Format: YYYY-MM-DDTHH:MM:SS (ISO 8601 local time format)\n  // Google Calendar API interprets these in the timezone specified by the timeZone parameter\n  const startDatetimeString = `${appointmentData.date}T${appointmentData.time}:00`;\n  const endDatetimeString = `${endDate}T${endTime}:00`;\n  \n  // Success: Return calculated data\n  output.push({\n    json: {\n      ...appointmentData,\n      duration_minutes: durationMinutes,\n      start_datetime: startDatetimeString,\n      end_datetime: endDatetimeString,\n      end_date: endDate,\n      end_time: endTime,\n      timezone: timezone // Preserve timezone for Google Calendar API\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "bac2cd60-3a7d-42ba-95d7-bd2ec9c34a02",
+      "name": "Match Service & Calculate Duration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2280,
+        565
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "563db2b6-41b6-4824-957e-7b48c315624a",
+      "name": "Merge Appointment with Calendar Event",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -80,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine appointment data with calendar event ID\n// Input 0: Appointment data (from availability check or direct routing)\n// Input 1: Calendar event (from Google Calendar create operation)\nconst items = $input.all();\n\n// Validate we have both inputs\nif (items.length < 2) {\n  throw new Error('Merge node requires both appointment data and calendar event');\n}\n\nconst appointmentData = items[0].json;\nconst calendarEvent = items[1].json;\n\n// Extract core appointment fields\n// These come from the original validated data, preserved through the flow\nreturn [{\n  json: {\n    name: appointmentData.name,\n    date: appointmentData.date,\n    time: appointmentData.time,\n    phone: appointmentData.phone,\n    service: appointmentData.service,\n    notes: appointmentData.notes || '',\n    google_calendar_event_id: calendarEvent.id || ''\n  }\n}];"
+      },
+      "id": "68e92fa0-1091-46d7-889d-0769514f9a4f",
+      "name": "Prepare Sheet Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        840
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
+          "mode": "list",
+          "cachedResultName": "Fake CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1777679575,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit#gid=1777679575"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Name": "={{ $json.name }}",
+            "Date": "={{ $json.date }}",
+            "Time": "={{ $json.time }}",
+            "Phone": "={{ $json.phone }}",
+            "Service": "={{ $json.service }}",
+            "Notes": "={{ $json.notes }}",
+            "Google Calendar Event ID": "={{ $json.google_calendar_event_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Google Calendar Event ID",
+              "displayName": "Google Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        360,
+        840
+      ],
+      "id": "97f1cfbb-1207-4796-b6c1-0602ca12947a",
+      "name": "Insert to Appointments Sheet",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format success response\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Appointment booked successfully.',\n    data: {\n      name: data.Name,\n      date: data.Date,\n      time: data.Time,\n      phone: data.Phone,\n      service: data.Service,\n      notes: data.Notes,\n      google_calendar_event_id: data[\"Google Calendar Event ID\"]\n    }\n  }\n}];"
+      },
+      "id": "d829cb20-b0b6-4076-98de-a9f11e63911f",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        990
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle validation failures\nconst data = $input.first().json;\n\nif (data.status === 'failure') {\n  return [{ json: data }];\n}\n\nreturn [];"
+      },
+      "id": "e631c7df-22f9-4191-8520-0fa69b8332ac",
+      "name": "Handle Validation Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle system errors from Google Calendar or Sheets\n// This node should ONLY execute when n8n triggers the error connection\n// IMPORTANT: Return empty array if no error to prevent non-error data from being processed\nconst inputItem = $input.first();\nconst inputData = inputItem.json || {};\nconst errorInfo = inputItem.error;\n\n// Check if this is actually an error\n// If there's no error info AND the data looks like success data, stop processing\nif (!errorInfo || !errorInfo.message) {\n  // Check if this is success data that shouldn't be here\n  if (inputData.status === 'success' || inputData.Name || inputData.id || inputData) {\n    // This is not an error, stop processing by returning empty array\n    return [];\n  }\n  \n  // If we got here, it's unclear what happened - create generic error\n  return [{\n    json: {\n      status: 'error',\n      message: 'An unexpected error occurred during booking.',\n      data: {\n        error_type: 'UNKNOWN_ERROR',\n        error_name: 'UnexpectedError',\n        timestamp: new Date().toISOString(),\n        retry_possible: true,\n        technical_details: {\n          note: 'Error handler triggered without error details',\n          input_data: inputData\n        }\n      }\n    }\n  }];\n}\n\n// Format proper error response with actual error information\nreturn [{\n  json: {\n    status: 'error',\n    message: errorInfo.message || 'A system error occurred while booking the appointment.',\n    data: {\n      error_type: errorInfo.code || 'BOOKING_ERROR',\n      error_name: errorInfo.name || 'SystemError',\n      timestamp: new Date().toISOString(),\n      retry_possible: true,\n      technical_details: {\n        error_message: errorInfo.message,\n        error_stack: errorInfo.stack,\n        node_name: errorInfo.node?.name\n      }\n    }\n  }\n}];"
+      },
+      "id": "b9622c59-c83e-4f7e-b58b-d2bf2b6cb7e3",
+      "name": "Handle System Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1a7261f9-43b5-484f-ace2-b426f977c794",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        -660,
-        100
+        800,
+        740
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Toggle for availability checking\n// Set to false to allow double bookings\nconst ENABLE_AVAILABILITY_CHECK = true;\n\nconst data = $input.first().json;\n\n// Add the toggle flag to the data\nreturn [{\n  json: {\n    ...data,\n    check_availability: ENABLE_AVAILABILITY_CHECK\n  }\n}];"
+      },
+      "id": "a4a4fe4a-2ba5-4b06-bac4-0d83bfd706c9",
+      "name": "Availability Check Toggle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1840,
+        865
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "4da0140a-b517-4eb1-947b-fe69dc58e6c3",
+              "leftValue": "={{ $json.check_availability }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f06ea444-0119-46a3-af17-9fd3a89df078",
+      "name": "Should Check Availability?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1620,
+        865
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $json.start_datetime }}",
+        "timeMax": "={{ $json.end_datetime }}",
+        "options": {
+          "timeZone": {
+            "__rl": true,
+            "value": "={{ $json.timezone }}",
+            "mode": "id"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -1400,
+        590
+      ],
+      "id": "f5f30697-9d42-4da8-871c-08442972914e",
+      "name": "Check Calendar Conflicts",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evaluate conflicts from merged calendar check and appointment data\n// Merge node combines: Input 0 (calendar events) + Input 1 (appointment data)\n// Think of it as: appointment data object + calendar response objects\nconst items = $input.all();\n\n// Separate appointment data from calendar events\n// Appointment data has fields like: name, date, time, service, start_datetime, end_datetime, timezone\n// Calendar events have fields like: id, start, end, summary, created, updated\nconst appointmentData = items.find(item => \n  item.json.name && item.json.service && item.json.start_datetime\n);\n\nconst calendarEvents = items.filter(item => \n  item.json.id && item.json.start && item.json.created\n);\n\n// If no appointment data found, something went wrong with the merge\nif (!appointmentData) {\n  throw new Error('Appointment data not found in merge. Check node connections.');\n}\n\n// Check if there are any calendar conflicts\nif (calendarEvents.length > 0) {\n  // Conflicts found - return failure with conflict details\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Time slot is not available. There is already an appointment scheduled at this time.',\n      data: {\n        requested_date: appointmentData.json.date,\n        requested_time: appointmentData.json.time,\n        requested_timezone: appointmentData.json.timezone,\n        conflicts: calendarEvents.map(event => ({\n          summary: event.json.summary || 'Untitled Event',\n          start: event.json.start?.dateTime || event.json.start?.date,\n          end: event.json.end?.dateTime || event.json.end?.date\n        })),\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// No conflicts found - pass through all appointment data\n// Preserve all fields needed for calendar creation\nreturn [{\n  json: {\n    ...appointmentData.json\n  }\n}];"
+      },
+      "id": "8d68fb41-31f1-4754-af54-2fdb5be6c630",
+      "name": "Evaluate Conflicts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "367aeb22-1827-49ac-9098-4c9fb74c3ca7",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "failure",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6be1ade3-09c1-4388-9292-5dba3bfb224d",
+      "name": "Is Slot Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -740,
+        740
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format datetime strings with timezone offset for Google Calendar API\n// Google Calendar requires RFC 3339 format: \"2025-10-09T12:00:00-05:00\"\n\nconst inputItems = $input.all();\nconst output = [];\n\n// Helper: convert local datetime + timezone → RFC3339\nfunction toRFC3339(dateTimeString, timeZone) {\n  const date = new Date(dateTimeString);\n  if (isNaN(date.getTime())) throw new Error(`Invalid datetime string: ${dateTimeString}`);\n\n  const fmt = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false\n  });\n\n  const parts = fmt.formatToParts(date);\n  const get = t => parseInt(parts.find(p => p.type === t).value, 10);\n  const local = new Date(Date.UTC(\n    get('year'),\n    get('month') - 1,\n    get('day'),\n    get('hour'),\n    get('minute'),\n    get('second')\n  ));\n\n  const offsetMinutes = (local.getTime() - date.getTime()) / 60000;\n  const sign = offsetMinutes <= 0 ? '-' : '+';\n  const abs = Math.abs(offsetMinutes);\n  const hh = String(Math.floor(abs / 60)).padStart(2, '0');\n  const mm = String(abs % 60).padStart(2, '0');\n  const offset = `${sign}${hh}:${mm}`;\n\n  const [d, t] = dateTimeString.split('T');\n  const timePart = t && t.split(':').length === 2 ? `${t}:00` : t;\n  return `${d}T${timePart}${offset}`;\n}\n\n// Process each item safely\nfor (const item of inputItems) {\n  // Accept either {json:{...}} or {...}\n  const data = item.json ?? item;\n\n  if (!data.start_datetime || !data.end_datetime || !data.timezone) {\n    throw new Error(\n      `Missing required fields. start_datetime=${data.start_datetime}, end_datetime=${data.end_datetime}, timezone=${data.timezone}`\n    );\n  }\n\n  const startRFC = toRFC3339(data.start_datetime, data.timezone);\n  const endRFC = toRFC3339(data.end_datetime, data.timezone);\n\n  output.push({\n    json: {\n      ...data,\n      start_datetime: startRFC,\n      end_datetime: endRFC\n    }\n  });\n}\n\nreturn output;\n"
+      },
+      "id": "287da956-bfa8-4ac6-a4aa-3afdf9820da3",
+      "name": "Format Calendar Datetime",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        865
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "b16200b3b0481c53ee04532493920b8ba603b382a2e0b6095d11156475414c0c@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Layer 7 System's Caroline Smith Salon Partnership"
+        },
+        "start": "={{ $json.start_datetime }}",
+        "end": "={{ $json.end_datetime }}",
+        "additionalFields": {
+          "description": "={{ $json.notes }}\n\nPhone: {{ $json.phone }}\nAppointment Date: {{ $json.date }}",
+          "summary": "={{ $json.service }} for {{ $json.name }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -300,
+        1065
+      ],
+      "id": "54be155f-cd8e-44c3-a06d-461ed65d795e",
+      "name": "Create Google Calendar Event",
+      "executeOnce": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -1180,
+        740
+      ],
+      "id": "bcd25c06-74dc-4431-8d91-8e1876bff30d",
+      "name": "Merge Calendar Conflict with Appointment"
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
         [
           {
-            "node": "Error Handler",
+            "node": "Validate & Extract Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Error Handler": {
+    "Validate & Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Appointment with Services",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Service Types",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Calculate Result": {
+      "main": [
+        [
+          {
+            "node": "Availability Check Toggle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Service Types": {
+      "main": [
+        [
+          {
+            "node": "Merge Appointment with Services",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Appointment with Services": {
+      "main": [
+        [
+          {
+            "node": "Match Service & Calculate Duration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Service & Calculate Duration": {
+      "main": [
+        [
+          {
+            "node": "Check Calculate Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Appointment with Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Prepare Sheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Sheet Data": {
+      "main": [
+        [
+          {
+            "node": "Insert to Appointments Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to Appointments Sheet": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
       "main": [
         [
           {
@@ -68,17 +646,155 @@
           }
         ]
       ]
+    },
+    "Handle Validation Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle System Error": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Availability Check Toggle": {
+      "main": [
+        [
+          {
+            "node": "Should Check Availability?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Check Availability?": {
+      "main": [
+        [
+          {
+            "node": "Check Calendar Conflicts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Calendar Conflict with Appointment",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Format Calendar Datetime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Calendar Conflicts": {
+      "main": [
+        [
+          {
+            "node": "Merge Calendar Conflict with Appointment",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Conflicts": {
+      "main": [
+        [
+          {
+            "node": "Is Slot Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Slot Available?": {
+      "main": [
+        [
+          {
+            "node": "Format Calendar Datetime",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Calendar Datetime": {
+      "main": [
+        [
+          {
+            "node": "Create Google Calendar Event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Appointment with Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Merge Appointment with Calendar Event",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Calendar Conflict with Appointment": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Conflicts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "db2ff0cb-d4a2-4dbc-ab3d-d7941c967cc9",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
-  },
-  "id": "jS4MlOIKTvc1nv5p",
-  "tags": []
+  }
 }

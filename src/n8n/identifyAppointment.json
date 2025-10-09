@@ -1,21 +1,8 @@
 {
-  "name": "identifyAppointment",
   "nodes": [
     {
       "parameters": {
-        "options": {}
-      },
-      "id": "5e9e9f1e-f5cd-4016-93db-b1073bfb3ef9",
-      "name": "Respond to Webhook",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        480,
-        100
-      ]
-    },
-    {
-      "parameters": {
+        "httpMethod": "POST",
         "path": "identifyAppointment",
         "responseMode": "responseNode",
         "options": {}
@@ -23,41 +10,217 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        40,
-        100
+        -600,
+        -185
       ],
-      "id": "6b9a31f6-3a96-48e8-bc72-95cd3ae272db",
+      "id": "28941e52-0874-48f4-ada8-616f2a71ce12",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
     },
     {
       "parameters": {
-        "functionCode": "const errorMessage = $json.message || $json.error?.message || 'A system error occurred while identifying appointment.';\nconst errorType = $json.code || $json.error?.code || 'IDENTIFY_APPOINTMENT_ERROR';\n\nreturn [{json: {\n  status: 'error',\n  message: errorMessage,\n  data: {\n    error_type: errorType,\n    timestamp: new Date().toISOString(),\n    retry_possible: !errorType.includes('AUTH'),\n    technical_details: $json\n  }\n}}];"
+        "jsCode": "// Extract and validate appointment search data from webhook body\nconst body = $input.first().json.body;\n\n// Validate required fields (need at least name OR phone)\nif (!body.name && !body.phone) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Either name or phone number is required to identify an appointment.',\n      data: {\n        missing_fields: ['name or phone'],\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Prepare search data\nreturn [{\n  json: {\n    name: body.name || '',\n    phone: body.phone || '',\n    date: body.date || null,\n    context: body.context || '',\n    query: body.query || '',\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
-      "id": "a9b12f8d-e270-4082-ac77-ea1ca3c04854",
-      "name": "Error Handler",
-      "type": "n8n-nodes-base.function",
+      "id": "786a941d-3fe4-4f53-bd66-65435f791f25",
+      "name": "Validate & Extract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        -185
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
+          "mode": "list",
+          "cachedResultName": "Fake CRM",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1777679575,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit#gid=1777679575"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Name",
+              "lookupValue": "={{ $json.name }}"
+            },
+            {
+              "lookupColumn": "Phone",
+              "lookupValue": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -160,
+        -20
+      ],
+      "id": "1456e376-fb06-48c3-b9f1-1443d4a7967a",
+      "name": "Get Appointments from Sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process matched appointments from Google Sheets\n// Input: Appended data with search criteria (first item) followed by exact-matched appointment records\nconst items = $input.all();\n\nif (items.length === 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No data received.',\n      data: {\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// First item is search data from validation\nconst searchData = items[0].json;\n\n// Remaining items are appointments from Google Sheets (already filtered by exact name/phone match)\nconst appointmentRecords = items.slice(1);\n\nif (appointmentRecords.length === 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No appointments found matching the provided information.',\n      data: {\n        search_criteria: searchData,\n        suggestions: 'Please verify the name, phone number, or date and try again.',\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Extract all matched appointments (Google Sheets already filtered by exact match)\nconst appointments = appointmentRecords.map(i => i.json);\n\n// Flatten to single item with all matching appointments\nreturn [{ \n  json: { \n    ...searchData, \n    appointments: appointments, \n    total_matches: appointments.length\n  } \n}];"
+      },
+      "id": "393b2eec-816b-49fe-b01e-84ff231a41bb",
+      "name": "Format Matched Appointments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Pass through failure status\nif (data.status === 'failure') return [{ json: data }];\n\nconst apts = data.appointments;\nconst count = apts.length;\n\n// Format message based on number of matches\nlet message;\nif (count === 1) {\n  message = `Found 1 appointment for ${apts[0].Name} on ${apts[0].Date} at ${apts[0].Time}.`;\n} else {\n  message = `Found ${count} appointments matching your search.`;\n}\n\n// Format appointments array for response\nconst formattedAppointments = apts.map(apt => ({\n  appointment_id: apt['Google Calendar Event ID'] || '',\n  name: apt.Name,\n  date: apt.Date,\n  time: apt.Time,\n  phone: apt.Phone,\n  service: apt.Service,\n  notes: apt.Notes || '',\n  context_summary: `${apt.Service} appointment on ${apt.Date} at ${apt.Time}`\n}));\n\nreturn [{\n  json: {\n    status: 'success',\n    message: message,\n    data: {\n      appointments: formattedAppointments,\n      total_matches: count\n    }\n  }\n}];"
+      },
+      "id": "fe36ddfe-3394-4b84-a361-8d9fa89cf352",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (data.status === 'failure') return [{ json: data }];\nreturn [];"
+      },
+      "id": "1c2d0fa6-49a6-488b-bb52-2a19970705af",
+      "name": "Handle Validation Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        65
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nif (input.error || input.code) {\n  const err = input.error || input;\n  return [{\n    json: {\n      status: 'error',\n      message: 'A system error occurred while searching for appointments.',\n      data: {\n        error_type: err.code || 'IDENTIFY_APPOINTMENT_ERROR',\n        error_message: err.message || 'Unknown error',\n        timestamp: new Date().toISOString(),\n        retry_possible: true,\n        technical_details: err\n      }\n    }\n  }];\n}\n\nreturn [];"
+      },
+      "id": "714048e1-fddf-40c1-b2cb-0bf27e2d3276",
+      "name": "Handle System Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2cf94ba1-513f-474d-b3ab-e1c0287f7437",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        260,
-        100
+        720,
+        -135
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "f3d01ec2-98ed-4790-911c-9fc689ca1752",
+      "name": "Merge Search Data with Appointments",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        60,
+        -360
       ]
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
         [
           {
-            "node": "Error Handler",
+            "node": "Validate & Extract Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Error Handler": {
+    "Validate & Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Get Appointments from Sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Search Data with Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Appointments from Sheet": {
+      "main": [
+        [
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Search Data with Appointments",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Format Matched Appointments": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
       "main": [
         [
           {
@@ -67,17 +230,68 @@
           }
         ]
       ]
+    },
+    "Handle Validation Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle System Error": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Search Data with Appointments": {
+      "main": [
+        [
+          {
+            "node": "Format Matched Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n.srv836523.hstgr.cloud",
+          "user-agent": "axios/1.11.0",
+          "content-length": "149",
+          "accept": "application/json, text/plain, */*",
+          "accept-encoding": "gzip, compress, deflate, br",
+          "content-type": "application/json"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "name": "Richard Alvarez",
+          "date": null,
+          "context": "follow up next week",
+          "phone": "7734699726",
+          "query": "Richard Alvarez follow up appointment next week"
+        },
+        "webhookUrl": "https://n8n.srv836523.hstgr.cloud/webhook-test/identifyAppointment",
+        "executionMode": "test"
+      }
+    ]
   },
-  "versionId": "da95669b-9f55-4c2e-965c-b4942a093772",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
-  },
-  "id": "V07jnjICp1WCdXNQ",
-  "tags": []
+  }
 }

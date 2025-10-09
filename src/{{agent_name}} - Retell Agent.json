@@ -1,12 +1,12 @@
 {
   "agent_id": "",
   "channel": "voice",
-  "last_modification_timestamp": 1759854243864,
+  "last_modification_timestamp": 1760009474289,
   "agent_name": "{{agent_name}}",
   "response_engine": {
     "type": "conversation-flow",
     "version": 0,
-    "conversation_flow_id": "conversation_flow_d0b4037701a9"
+    "conversation_flow_id": "conversation_flow_9a1ca568d808"
   },
   "language": "en-US",
   "opt_out_sensitive_data_storage": false,
@@ -14,6 +14,7 @@
   "opt_in_signed_url": false,
   "version": 0,
   "is_published": false,
+  "version_title": "",
   "post_call_analysis_model": "gpt-4o-mini",
   "pii_config": {
     "mode": "post_call",
@@ -32,20 +33,21 @@
     ]
   },
   "voice_id": "11labs-Cimo",
+  "enable_backchannel": false,
   "max_call_duration_ms": 600000,
   "interruption_sensitivity": 0.9,
   "allow_user_dtmf": true,
   "user_dtmf_options": {},
   "retellLlmData": null,
   "conversationFlow": {
-    "conversation_flow_id": "conversation_flow_d0b4037701a9",
+    "conversation_flow_id": "conversation_flow_9a1ca568d808",
     "version": 0,
     "global_prompt": "",
     "nodes": [
       {
         "instruction": {
           "type": "prompt",
-          "text": "Analyze the caller's intent and route to the appropriate conversation node. Listen actively and respond naturally to understand their needs before transitioning."
+          "text": "Listen to caller's request from greeting. If they stated their need, acknowledge and route immediately without asking them to repeat. Only ask clarifying questions if intent is unclear. Keep responses under 2 sentences.\n\nCurrent date/time: {{dayAndTime}}"
         },
         "name": "Router",
         "edges": [
@@ -54,7 +56,7 @@
             "id": "edge-1759306500001",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller asks about specific personal appointment details, mentions names, phone numbers, or requests information tied to an individual."
+              "prompt": "Caller asks about THEIR OWN specific appointment (e.g., 'when is my appointment', 'what time is my booking', 'can you check my appointment'). Route to identification first."
             }
           },
           {
@@ -62,7 +64,7 @@
             "id": "edge-1759286128401",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller requests general information or asks non-personal questions about services, business operations, or general booking policies."
+              "prompt": "Caller asks general business questions about services, hours, policies, or procedures (NOT about their specific appointment)."
             }
           },
           {
@@ -78,7 +80,7 @@
             "id": "edge-2",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller requests to change details of an existing appointment."
+              "prompt": "Caller requests to modify an existing appointment."
             }
           },
           {
@@ -94,7 +96,7 @@
             "id": "edge-1759305738582",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller indicates completion of their request or expresses desire to end the conversation."
+              "prompt": "Caller indicates they are ready to end the conversation."
             }
           },
           {
@@ -102,7 +104,7 @@
             "id": "edge-1759286706982",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller requests to speak with a human representative or supervisor."
+              "prompt": "Caller requests to speak with a human representative."
             }
           },
           {
@@ -110,7 +112,7 @@
             "id": "edge-1759286171992",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller's intent is unclear or does not match other defined categories."
+              "prompt": "Caller's intent is unclear or does not match defined categories."
             }
           }
         ],
@@ -123,13 +125,13 @@
         "type": "conversation",
         "display_position": {
           "x": 1277,
-          "y": 2509
+          "y": 2538
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Answer general business questions using the knowledge base."
+          "text": "Answer GENERAL business questions using knowledge base (hours, services, policies, procedures). This node is for GENERAL questions only - if caller asks about THEIR specific appointment, this should have routed to appointment identification. Use knowledge base first. If knowledge base insufficient, use Answer Question tool for real-time/contextual info. Keep responses to 1-2 sentences. After answering, ask if they need anything else."
         },
         "name": "Answer Question",
         "edges": [
@@ -138,7 +140,7 @@
             "id": "edge-1759754099768",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller's question requires contextual or real-time company information beyond the scope of the knowledge base."
+              "prompt": "Knowledge base lacks sufficient information to answer the question."
             }
           },
           {
@@ -146,7 +148,7 @@
             "id": "edge-1759286493146",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller disputes the provided answer or the knowledge base lacks sufficient information to address their inquiry."
+              "prompt": "Caller disputes the answer or needs additional details."
             }
           },
           {
@@ -154,7 +156,15 @@
             "id": "edge-1759267974537",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller's question has been successfully answered and they are satisfied with the response."
+              "prompt": "Question has been successfully answered and caller is satisfied."
+            }
+          },
+          {
+            "destination_node_id": "node-1759288307521",
+            "id": "edge-1759885350328",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Question requires real-time or contextual information beyond knowledge base."
             }
           }
         ],
@@ -169,16 +179,16 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Offer callback from human support and collect information for lead logging."
+          "text": "Offer callback from human support. Collect information per logLead schema: name, phone, email, notes, timestamp. Keep responses conversational and brief."
         },
-        "name": "Fallback/Log Lead/Provide Callback",
+        "name": "Log Lead",
         "edges": [
           {
             "destination_node_id": "node-1759295548716",
             "id": "edge-1759267848412",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "All required information has been collected to create a lead record for callback."
+              "prompt": "All required lead information has been collected for callback."
             }
           },
           {
@@ -186,7 +196,7 @@
             "id": "edge-1759297549853",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller declines the offer to receive a callback from human support."
+              "prompt": "Caller declines callback offer."
             }
           },
           {
@@ -194,19 +204,24 @@
             "id": "edge-1759301888114",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller requests to speak with a human representative or supervisor."
+              "prompt": "Caller requests to speak with a human representative."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759267848412-router",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller changes request or asks about different topic."
             }
           }
         ],
-        "global_node_setting": {
-          "condition": "Caller requests callback assistance or system encounters an error requiring human intervention for resolution."
-        },
         "id": "node-1759267848412",
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
           "x": 4277,
-          "y": 2382
+          "y": 2441
         }
       },
       {
@@ -215,7 +230,7 @@
         "type": "end",
         "display_position": {
           "x": 6277,
-          "y": 3363
+          "y": 3392
         },
         "instruction": {
           "type": "prompt",
@@ -249,13 +264,13 @@
         "type": "transfer_call",
         "display_position": {
           "x": 5277,
-          "y": 3173
+          "y": 3202
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Collect required appointment information. Transition to booking when complete."
+          "text": "## Task\nCollect ALL required appointment information: name, phone, date (YYYY-MM-DD), time (HH:MM 24-hour), service type, timezone (use {{timezone}}), and optional notes.\n\n## Critical Rules\n- Ask ONE question at a time\n- If caller asks clarifying questions WHILE gathering info, answer them briefly and CONTINUE gathering remaining info\n- Do NOT transition away unless caller EXPLICITLY says 'never mind', 'cancel', or 'forget it'\n- MUST collect ALL required fields before transitioning to booking\n- After collecting all info, confirm details naturally: 'Just to confirm, I have [summary]. Is that correct?'\n- Only transition to Book Appointment function after caller CONFIRMS all details\n- IMPORTANT: No booking has occurred yet - you are still GATHERING information. The actual booking happens when the tool executes.\n\n## DO NOT\n- Do NOT assume info not provided\n- Do NOT transition to booking until ALL info collected AND confirmed\n- Do NOT route to other nodes if caller asks simple questions - answer and continue\n- Do NOT tell caller 'I'll book that for you' or 'I'm booking now' - you are still collecting info\n\nCurrent date/time: {{dayAndTime}}\nTimezone: {{timezone}}"
         },
         "name": "Gather New Appointment Details",
         "edges": [
@@ -264,7 +279,7 @@
             "id": "edge-1759285368491",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "All required appointment information has been collected and verified for booking."
+              "prompt": "ALL required fields collected (name, phone, date, time, service, timezone) AND caller explicitly confirmed details are correct. Do NOT transition if still gathering info or if confirmation pending."
             }
           },
           {
@@ -272,7 +287,7 @@
             "id": "edge-1759299265144",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller changes their mind and no longer wishes to schedule an appointment."
+              "prompt": "Caller explicitly cancels booking using phrases like 'never mind', 'cancel that', 'I don't want to book anymore', or 'forget the appointment'. Clarifying questions do NOT trigger this."
             }
           }
         ],
@@ -280,8 +295,8 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 3277,
-          "y": 219
+          "x": 2685.5714285714284,
+          "y": 133.28571428571425
         }
       },
       {
@@ -308,7 +323,7 @@
         "type": "branch",
         "display_position": {
           "x": 4777,
-          "y": 2960
+          "y": 2989
         }
       },
       {
@@ -353,7 +368,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Explain booking failure and collect corrected information."
+          "text": "Explain booking failure and collect corrected information. Keep responses brief and solution-focused."
         },
         "name": "Re-Verify Appointment Details",
         "edges": [
@@ -362,7 +377,7 @@
             "id": "edge-1759287611013",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller provides corrected and valid appointment information that meets system requirements."
+              "prompt": "Caller provides corrected appointment information."
             }
           },
           {
@@ -370,7 +385,7 @@
             "id": "edge-1759290069897",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller decides to abandon the appointment booking process."
+              "prompt": "Caller decides to abandon appointment booking."
             }
           },
           {
@@ -378,7 +393,7 @@
             "id": "edge-1759306509467",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller chooses not to proceed with any of the available options."
+              "prompt": "Caller requests to do something else."
             }
           }
         ],
@@ -432,7 +447,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Summarize interaction and check if caller needs anything else."
+          "text": "Summarize what was accomplished based ONLY on tool execution results from conversation history. Verify that any booking/modification/cancellation tools actually returned success before confirming completion. Do NOT assume operations succeeded - check the tool response. Ask if caller needs anything else. Be warm and professional."
         },
         "name": "End Call Confirmation",
         "edges": [
@@ -449,19 +464,16 @@
             "id": "edge-1759290019289",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Else"
+              "prompt": "Caller has another request."
             }
           }
         ],
-        "global_node_setting": {
-          "condition": "Caller indicates readiness to conclude the conversation and end the call."
-        },
         "id": "node-1759289883915",
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
           "x": 5277,
-          "y": 190
+          "y": 212
         }
       },
       {
@@ -506,7 +518,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Acknowledge inability to answer and offer callback or transfer alternatives."
+          "text": "Acknowledge inability to answer. Offer callback or route to different request. Keep response empathetic and brief."
         },
         "name": "Q/A Fail",
         "edges": [
@@ -515,7 +527,7 @@
             "id": "edge-1759298359614",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller expresses desire to end the conversation after being unable to get their question answered."
+              "prompt": "Caller accepts callback offer for unanswered question."
             }
           },
           {
@@ -523,7 +535,15 @@
             "id": "edge-1759298254864",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller chooses to continue the conversation despite the system being unable to answer their question."
+              "prompt": "Caller wants to continue with different request."
+            }
+          },
+          {
+            "destination_node_id": "node-1759289883915",
+            "id": "edge-1759298254864-end",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller is ready to end the conversation."
             }
           }
         ],
@@ -538,7 +558,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Collect identifying information to search for the appointment."
+          "text": "## Task\nIdentify caller's appointment to answer questions or take action (modify, cancel).\n\n## Approach\n- Ask for phone number OR full name naturally\n- Optionally ask for appointment date if needed for disambiguation\n- Be conversational: 'To help you with your appointment, may I have your phone number?'\n- Keep responses under 2 sentences\n\n## Required Info\n- Phone number OR name (at least one)\n- Date (optional, helps narrow results)\n\n## Transition When\n- Sufficient info collected: → call identifyAppointment function\n- Caller can't provide info: → offer to log callback\n- Caller explicitly cancels: 'never mind', 'forget it' → router\n\n## DO NOT\n- Do NOT assume or invent appointment details\n- Do NOT answer appointment-specific questions until AFTER identification\n\nCurrent date/time: {{dayAndTime}}\nTimezone: {{timezone}}"
         },
         "name": "Identify Appointment",
         "edges": [
@@ -547,7 +567,7 @@
             "id": "edge-1759299298668",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Sufficient appointment details have been collected to search for matching appointments."
+              "prompt": "Sufficient identifying information has been collected."
             }
           },
           {
@@ -555,7 +575,15 @@
             "id": "edge-1759299413073",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller is unable to provide sufficient details to identify their appointment."
+              "prompt": "Caller cannot provide sufficient identifying information."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1759299298668-router",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller changes request or asks about different topic."
             }
           }
         ],
@@ -609,7 +637,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Determine caller's intent for the identified appointment: answer question, modify, or cancel."
+          "text": "Confirm appointment details naturally and determine caller's intent. Route to Answer Question tool for questions, Modify Appointment tool for changes, Cancel Appointment tool for cancellations. Keep responses under 2 sentences."
         },
         "name": "Operate on Existing Appointment",
         "edges": [
@@ -618,11 +646,11 @@
             "id": "edge-operate-answer",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller asks a question about their identified appointment."
+              "prompt": "Caller asks question about their identified appointment."
             }
           },
           {
-            "destination_node_id": "node-1759300443418",
+            "destination_node_id": "node-1760010000000",
             "id": "edge-operate-modify",
             "transition_condition": {
               "type": "prompt",
@@ -642,7 +670,7 @@
             "id": "edge-operate-abandon",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller decides not to proceed with any operation on the appointment."
+              "prompt": "Caller satisfied or wants different topic."
             }
           }
         ],
@@ -652,6 +680,38 @@
         "display_position": {
           "x": 2777,
           "y": 1041
+        }
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Gather modification details from caller. Ask which field(s) they want to change: date, time, service, or other details. Only collect information for fields they want to modify. Use {{timezone}} for timezone parameter when date/time changes requested. Confirm changes before transitioning to function.\n\nCurrent: {{dayAndTime}}\nTimezone: {{timezone}}"
+        },
+        "name": "Gather Modification Details",
+        "edges": [
+          {
+            "destination_node_id": "node-1759300443418",
+            "id": "edge-1760010000001",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller has confirmed all desired changes."
+            }
+          },
+          {
+            "destination_node_id": "start-node-1759266611426",
+            "id": "edge-1760010000002",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller cancels modification request."
+            }
+          }
+        ],
+        "id": "node-1760010000000",
+        "knowledge_base_ids": [],
+        "type": "conversation",
+        "display_position": {
+          "x": 3277,
+          "y": 751
         }
       },
       {
@@ -667,6 +727,7 @@
             }
           },
           {
+            "destination_node_id": "node-1759287611013",
             "id": "edge-1759870963515",
             "transition_condition": {
               "type": "prompt",
@@ -705,6 +766,7 @@
             }
           },
           {
+            "destination_node_id": "node-1759287611013",
             "id": "edge-1759870980769",
             "transition_condition": {
               "type": "prompt",
@@ -733,7 +795,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Deliver welcoming greeting with name, business, time-based salutation.\n{{agent_name}}\n{{business_name}}\n{{dayAndTime}}"
+          "text": "Deliver warm introduction with business name and agent name. Ask how you can help. Listen carefully to their full response without asking them to repeat if they state their request.\n\n{{agent_name}}\n{{business_name}}"
         },
         "name": "Welcome",
         "edges": [
@@ -742,15 +804,15 @@
             "id": "edge-1759303421427",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller indicates they wish to conclude the conversation."
+              "prompt": "Caller wishes to end the conversation immediately."
             }
           },
           {
-            "destination_node_id": "start-node-1759266611426",
+            "destination_node_id": "node-1759818957400",
             "id": "edge-1759305123422",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Else"
+              "prompt": "Caller states their request or responds to greeting."
             }
           }
         ],
@@ -758,14 +820,14 @@
         "knowledge_base_ids": [],
         "type": "conversation",
         "display_position": {
-          "x": 777,
-          "y": 3223
+          "x": 227.03495591931744,
+          "y": 3259.157896452243
         }
       },
       {
         "instruction": {
           "type": "prompt",
-          "text": "Deliver graceful farewell."
+          "text": "Deliver warm farewell. Thank caller for calling and wish them well. Keep it brief.\n\n{{business_name}}"
         },
         "name": "Graceful Goodbye",
         "edges": [
@@ -782,7 +844,7 @@
         "type": "conversation",
         "display_position": {
           "x": 5777,
-          "y": 3253
+          "y": 3282
         },
         "skip_response_edge": {
           "destination_node_id": "node-1759285139512",
@@ -798,7 +860,7 @@
         "name": "Get Day and Time",
         "edges": [
           {
-            "destination_node_id": "node-1759303421427",
+            "destination_node_id": "start-node-1759266611426",
             "id": "edge-1759821057178",
             "transition_condition": {
               "type": "equation",
@@ -817,13 +879,13 @@
         "tool_type": "local",
         "speak_during_execution": false,
         "display_position": {
-          "x": 277,
-          "y": 3314
+          "x": 708.9245209331547,
+          "y": 3247.266935455671
         },
         "wait_for_result": true
       }
     ],
-    "start_node_id": "node-1759818957400",
+    "start_node_id": "node-1759303421427",
     "start_speaker": "agent",
     "tools": [
       {
@@ -845,20 +907,14 @@
             "name",
             "date",
             "time",
-            "phone"
+            "phone",
+            "timezone",
+            "service"
           ],
           "properties": {
-            "name": {
-              "type": "string",
-              "description": "Full name of the caller"
-            },
             "date": {
               "type": "string",
               "description": "Appointment date in YYYY-MM-DD format"
-            },
-            "time": {
-              "type": "string",
-              "description": "Appointment time in 24-hour format HH:MM"
             },
             "notes": {
               "type": "string",
@@ -868,28 +924,35 @@
               "type": "string",
               "description": "10-digit phone number, optional extension (e.g., 1234567890x123)"
             },
+            "timezone": {
+              "type": "string",
+              "description": "Timezone for the appointment (e.g., America/Chicago). Use value from dayAndTime tool."
+            },
             "service": {
-              "description": "Type of service requested (only one can be true)",
+              "description": "Type of service requested (only one can be true). NOTE: Service types are automatically injected from config.json client_data.services during build.",
               "type": "object",
               "required": [
-                "Haircut",
-                "Color",
-                "Styling"
+                "Consultation",
+                "Follow-Up"
               ],
               "properties": {
-                "Styling": {
+                "Consultation": {
                   "type": "boolean",
-                  "description": ""
+                  "description": "Initial consultation to discuss project requirements and scope"
                 },
-                "Haircut": {
+                "Follow-Up": {
                   "type": "boolean",
-                  "description": ""
-                },
-                "Color": {
-                  "type": "boolean",
-                  "description": ""
+                  "description": "Follow-up meeting for ongoing projects"
                 }
               }
+            },
+            "name": {
+              "type": "string",
+              "description": "Full name of the caller"
+            },
+            "time": {
+              "type": "string",
+              "description": "Appointment time in 24-hour format HH:MM (local time)"
             }
           }
         }
@@ -899,7 +962,7 @@
         "parameter_type": "json",
         "method": "POST",
         "query_params": {},
-        "description": "Answers a question using a RAG agent.",
+        "description": "Answers questions using RAG agent with Google Calendar, Drive, and Sheets access. Two modes: (1) General business questions without context, (2) Identified caller's appointment questions with context populated from identifyAppointment.",
         "type": "custom",
         "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/answerQuestion",
         "tool_id": "tool-1759288305078",
@@ -912,11 +975,11 @@
           "properties": {
             "question": {
               "type": "string",
-              "description": "The exact question or information request from the caller. Must NOT contain requests for personal appointment details, names, phone numbers, or customer-specific information."
+              "description": "The caller's question. For general business questions, this can be any company-related query. For personal appointment questions, only use after identifyAppointment verification."
             },
             "context": {
               "type": "string",
-              "description": "Optional additional context about the caller or topic."
+              "description": "Optional. Leave empty for general business questions. Populate with appointment details from identifyAppointment response when caller asks about their specific appointment. RAG uses this to provide personalized answers while protecting other customers' privacy."
             }
           },
           "required": [
@@ -942,7 +1005,6 @@
           "required": [
             "phone",
             "name",
-            "timestamp",
             "email"
           ],
           "properties": {
@@ -975,12 +1037,12 @@
       },
       {
         "headers": {},
-        "parameter_type": "json",
+        "parameter_type": "form",
         "method": "POST",
         "query_params": {},
         "description": "Searches for appointments in Google Calendar and spreadsheet records using provided search criteria. Returns matching appointment details including appointment_id needed for modifications or cancellations.",
         "type": "custom",
-        "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/identifyAppointment",
+        "url": "https://n8n.srv836523.hstgr.cloud/webhook/identifyAppointment",
         "tool_id": "tool-1759299574542",
         "args_at_root": true,
         "timeout_ms": 120000,
@@ -990,8 +1052,7 @@
           "type": "object",
           "required": [
             "name",
-            "phone",
-            "query"
+            "phone"
           ],
           "properties": {
             "name": {
@@ -1022,7 +1083,7 @@
         "parameter_type": "json",
         "method": "POST",
         "query_params": {},
-        "description": "Modifies an existing appointment",
+        "description": "Modifies an existing appointment. Only include fields being changed in the updates object.",
         "type": "custom",
         "url": "https://n8n.srv836523.hstgr.cloud/webhook-test/modifyAppointment",
         "tool_id": "tool-1759300315801",
@@ -1033,16 +1094,61 @@
         "parameters": {
           "type": "object",
           "required": [
-            "appointment_id"
+            "appointment_id",
+            "updates"
           ],
           "properties": {
             "updates": {
               "type": "object",
-              "description": "An object containing fields to be updated. The exact keys depend on the backend schema (e.g., new_date, new_time, service, notes)."
+              "description": "Object containing ONLY the fields to be changed. Available fields: name, date (YYYY-MM-DD), time (HH:MM 24-hour), phone, service, timezone, notes.",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "description": "Updated appointment date in YYYY-MM-DD format"
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Updated appointment notes"
+                },
+                "phone": {
+                  "type": "string",
+                  "description": "Updated phone number"
+                },
+                "service": {
+                  "description": "Updated service type selection (same schema as bookAppointment). NOTE: Service types are dynamically injected during build from config.json client_data.services array.",
+                  "type": "object",
+                  "required": [
+                    "Consultation",
+                    "Follow-Up"
+                  ],
+                  "properties": {
+                    "Consultation": {
+                      "type": "boolean",
+                      "description": "Initial consultation to discuss project requirements and scope"
+                    },
+                    "Follow-Up": {
+                      "type": "boolean",
+                      "description": "Follow-up meeting for ongoing projects"
+                    }
+                  }
+                },
+                "timezone": {
+                  "type": "string",
+                  "description": "Updated IANA timezone (e.g., 'America/Chicago'). Use {{timezone}} variable."
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Updated customer name"
+                },
+                "time": {
+                  "type": "string",
+                  "description": "Updated appointment time in HH:MM 24-hour format"
+                }
+              }
             },
             "appointment_id": {
               "type": "string",
-              "description": "Backend-specific identifier for the appointment (Google Calendar event.id, CRM booking ID, etc.)."
+              "description": "Google Calendar Event ID from identifyAppointment response (use EXACT value)."
             }
           }
         }
@@ -1090,6 +1196,7 @@
         "timeout_ms": 120000,
         "name": "dayAndTime",
         "response_variables": {
+          "timezone": "data.timezone",
           "dayAndTime": "data.currentDate"
         },
         "parameters": {
@@ -1101,7 +1208,8 @@
     ],
     "model_choice": {
       "type": "cascading",
-      "model": "gpt-4.1"
+      "model": "gpt-4.1",
+      "high_priority": false
     },
     "model_temperature": 0,
     "tool_call_strict_mode": true,
@@ -1113,7 +1221,7 @@
     },
     "begin_tag_display_position": {
       "x": 0,
-      "y": 3377
+      "y": 3406
     },
     "is_published": false
   },

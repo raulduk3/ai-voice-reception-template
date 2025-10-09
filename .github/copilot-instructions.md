@@ -5,7 +5,7 @@ You are an AI voice receptionist template system expert. When users invoke slash
 ## Available Slash Commands
 
 ### `/retell-flow [description]`
-Help modify Retell agent conversation flows with proper router patterns.
+Help modify Retell agent conversation flows and conversation node instructions.
 
 **Architecture Rules:**
 - Use conversation nodes for user interaction, function nodes for n8n tool calls
@@ -15,12 +15,25 @@ Help modify Retell agent conversation flows with proper router patterns.
 - Ensure proper routing back to main conversation after tool execution
 - Include human escalation paths for complex scenarios
 
+**Node Instruction Best Practices:**
+- Structure complex node instructions using sectional format (Task, Approach, Transition Triggers)
+- Be explicit about when to transition using specific trigger words/phrases
+- Keep responses concise: 1-2 sentences unless explaining complex topics
+- Reference tools by exact function names (e.g., `identifyAppointment`)
+- Use natural, conversational language in node instructions
+- **Only include `{{dayAndTime}}` and `{{timezone}}` in nodes that:**
+  - Call functions requiring temporal context (booking, identifying, modifying appointments)
+  - Need current time for conversation logic (time-based greetings)
+  - Do NOT include in general routing, confirmation, or conversational nodes
+- Define clear success criteria for each transition edge
+
 **Response Format:**
-1. Analyze the requested flow modification
+1. Analyze the requested flow modification (structure vs instruction optimization)
 2. Provide step-by-step implementation plan
-3. Include specific node configurations and edge conditions
-4. Show example conversation prompt updates
-5. List files that need modification
+3. Include specific node configurations with properly structured instructions
+4. Show example conversation prompt updates using best practices patterns
+5. Define explicit transition conditions with trigger phrases
+6. List files that need modification
 
 ### `/n8n-workflow [description]`
 Create or modify n8n workflows following established patterns.
@@ -65,7 +78,16 @@ Extend the template system with new features or configuration options.
 **Template System Architecture:**
 - config.json drives all template variables and behavior
 - build.js processes templates with LayerBuilder class
-- Two-phase build: prompts first, then configuration injection
+- **Three-phase build process:**
+  1. **Build Time:** Replace `{{variables}}` in filenames and most file contents
+  2. **Prompt Injection:** Inject prompts into Retell agent (preserving `{{variables}}`)
+  3. **Dynamic Variables:** Hydrate runtime variables into `default_dynamic_variables`
+- **File Type Processing:**
+  - Prompts (`.md` in `prompts/`): Filename templated, content preserved for Retell runtime
+  - CSV files: Fully templated (filename + content)
+  - Knowledge Base: Fully templated
+  - n8n workflows: Fully templated (except answerQuestion gets RAG prompt injected)
+  - Retell Agent: Multi-phase processing (settings + prompts + variables + webhooks)
 - Selective templating preserves infrastructure while customizing business details
 - Dynamic webhook URL generation per tool
 - Runtime variable support for Retell agent
@@ -80,13 +102,19 @@ Extend the template system with new features or configuration options.
 
 ## Dynamic Variables Reference
 
-Available in all Retell prompts and conversations:
+**Runtime variables** available in Retell prompts (populated from config.json):
 - `{{business_name}}` - Client business name
 - `{{business_hours}}` - Operating hours
 - `{{business_phone}}` - Contact phone number
 - `{{business_address}}` - Physical address
 - `{{appointment_types}}` - Available service types
-- `{{transfer_number}}` - Human escalation number
+- `{{transfer_phone_number}}` - Human escalation number
+
+**Temporal variables** (only use in function-calling or time-aware nodes):
+- `{{dayAndTime}}` - Current date and time (from dayAndTime tool)
+- `{{timezone}}` - Business timezone (from dayAndTime tool)
+
+**Best Practice:** Only include `{{dayAndTime}}` and `{{timezone}}` in nodes that call scheduling functions or need temporal context. Avoid including them in general conversation, routing, confirmation, or closing nodes to reduce token usage and prompt complexity.
 
 ## Webhook URL Patterns
 

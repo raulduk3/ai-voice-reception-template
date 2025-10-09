@@ -47,7 +47,7 @@
     },
     {
       "parameters": {
-        "functionCode": "const args = $json;\nreturn [{json: {\n  status: 'success',\n  message: 'Datetime found.',\n  data: {\n    currentDate: $json.currentDate\n  }\n}}];"
+        "functionCode": "const dateData = $json;\n\n// Extract timezone from Date & Time node\nconst timezone = 'America/Chicago'; // From Date & Time node configuration\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Datetime and timezone information retrieved.',\n    data: {\n      currentDate: dateData.currentDate,\n      timezone: timezone,\n      timezoneOffset: new Date().getTimezoneOffset() / -60\n    }\n  }\n}];"
       },
       "id": "3550ae52-45a7-47ae-bfd3-d2d12aa39f14",
       "name": "Format Success",

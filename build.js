@@ -91,6 +91,13 @@ class LayerBuilder {
           // Keep the template-processed content even if formatting fails
           sizeReduction = 0;
         }
+      } else if (ext === ".csv") {
+        // CSV files: template processed, no minification
+        // processedContent already has templates replaced
+        sizeReduction = (
+          ((content.length - processedContent.length) / content.length) *
+          100
+        ).toFixed(1);
       } else {
         // For other file types, copy as-is
         processedContent = content;
@@ -138,10 +145,8 @@ class LayerBuilder {
           repository_name: repoName,
           version: packageJson.version || "1.0.0",
           business_name: businessName,
-          agent_display_name: this.config.templating?.variables?.agent_display_name || 
-                            `${businessName} AI Voice Receptionist`,
-          agent_human_name: this.config.templating?.variables?.agent_human_name || 
-                          businessName.split(" ")[0]
+          agent_name: this.config.templating?.variables?.agent_name || 
+                     `${businessName} AI Voice Receptionist`
         };
       } else {
         // Use explicit config values
@@ -151,8 +156,7 @@ class LayerBuilder {
           version: packageJson.version || "1.0.0",
           ...this.config.templating?.variables || {
             business_name: "Your Business",
-            agent_display_name: "Your Business AI Voice Receptionist",
-            agent_human_name: "Assistant"
+            agent_name: "Your Business AI Voice Receptionist"
           }
         };
       }
@@ -180,9 +184,7 @@ class LayerBuilder {
         repository_name: this.templateVariables.repository_name,
         version: this.templateVariables.version,
         business_name: this.templateVariables.business_name,
-        agent_display_name: this.templateVariables.agent_display_name,
-        agent_name: this.templateVariables.agent_human_name,
-        agent_human_name: this.templateVariables.agent_human_name,
+        agent_name: this.templateVariables.agent_name,
         ai_support_hours: "24/7",
         transfer_phone_number: this.buildConfig.infrastructure.transfer_phone_number
       };
@@ -192,6 +194,9 @@ class LayerBuilder {
         ...defaultRuntimeVars,
         ...(this.config.runtime_variables || {})
       };
+
+      // PHASE 4: Client Data Variables (for knowledge base and sheets generation)
+      this.clientDataVariables = this.processClientData(this.config.client_data || {});
 
       console.log("✅ Configuration loaded successfully");
       console.log(`📋 Template Variables: ${Object.keys(this.templateVariables).join(", ")}`);
@@ -211,8 +216,7 @@ class LayerBuilder {
       repository_name: "ai-voice-receptionist",
       version: "1.0.0",
       business_name: "Your Business",
-      agent_display_name: "Your Business AI Voice Receptionist",
-      agent_human_name: "Assistant"
+      agent_name: "Your Business AI Voice Receptionist"
     };
     this.buildConfig = {
       voice_settings: {
@@ -228,12 +232,11 @@ class LayerBuilder {
       repository_name: "ai-voice-receptionist",
       version: "1.0.0",
       business_name: "Your Business",
-      agent_display_name: "Your Business AI Voice Receptionist",
-      agent_name: "Assistant",
-      agent_human_name: "Assistant",
+      agent_name: "Your Business AI Voice Receptionist",
       ai_support_hours: "24/7",
       transfer_phone_number: "+1234567890"
     };
+    this.clientDataVariables = {};
     this.config = {};
   }
 
@@ -269,20 +272,127 @@ class LayerBuilder {
     ); // Fallback
   }
 
+  processClientData(clientData) {
+    // Transform client_data from config into template variables for knowledge base & sheets
+    const variables = {};
+
+    // Business Info
+    if (clientData.business_info) {
+      const info = clientData.business_info;
+      variables.client_email = info.email || "";
+      variables.client_phone = info.phone || "";
+      variables.client_website = info.website || "";
+      variables.client_timezone = info.timezone || "America/Chicago";
+      variables.client_description = info.description || "";
+      
+      // Address formatting
+      if (info.address) {
+        const addr = info.address;
+        if (addr.street) {
+          variables.client_location = `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`.trim();
+        } else {
+          variables.client_location = addr.city || "Remote";
+        }
+      } else {
+        variables.client_location = "Remote";
+      }
+    }
+
+    // Services List (formatted for markdown)
+    if (clientData.services && clientData.services.length > 0) {
+      variables.services_list = clientData.services
+        .map(service => {
+          let line = `- **${service.name}** (${service.duration_minutes} minutes)`;
+          if (service.description) {
+            line += `\n  ${service.description}`;
+          }
+          if (service.price) {
+            line += ` - ${service.price}`;
+          }
+          return line;
+        })
+        .join("\n");
+      
+      // Services as CSV rows
+      variables.services_csv = clientData.services
+        .map(service => `${service.name},${service.duration_minutes}`)
+        .join("\n");
+    } else {
+      variables.services_list = "No services configured.";
+      variables.services_csv = "";
+    }
+
+    // Business Hours
+    if (clientData.business_hours) {
+      const hours = clientData.business_hours;
+      variables.business_hours_display = hours.display || this.formatBusinessHours(hours);
+      variables.business_hours_notes = hours.notes || "";
+    } else {
+      variables.business_hours_display = "Please contact us for hours.";
+      variables.business_hours_notes = "";
+    }
+
+    // Booking Info
+    if (clientData.booking) {
+      variables.booking_advance_notice = clientData.booking.advance_notice_required || "24 hours";
+      variables.cancellation_policy = clientData.booking.cancellation_policy || "Please contact us for our cancellation policy.";
+      variables.booking_instructions = clientData.booking.booking_instructions || "Contact us to schedule an appointment.";
+      
+      if (clientData.booking.payment_methods && clientData.booking.payment_methods.length > 0) {
+        variables.payment_methods = clientData.booking.payment_methods.join(", ");
+      } else {
+        variables.payment_methods = "";
+      }
+    }
+
+    // FAQ List
+    if (clientData.faq && clientData.faq.length > 0) {
+      variables.faq_list = clientData.faq
+        .map(item => `**Q: ${item.question}**\nA: ${item.answer}`)
+        .join("\n\n");
+    } else {
+      variables.faq_list = "Please contact us with any questions.";
+    }
+
+    // Policies
+    if (clientData.policies) {
+      const policySections = [];
+      if (clientData.policies.no_show_policy) {
+        policySections.push(`**No-Show Policy:** ${clientData.policies.no_show_policy}`);
+      }
+      if (clientData.policies.late_arrival_policy) {
+        policySections.push(`**Late Arrival:** ${clientData.policies.late_arrival_policy}`);
+      }
+      if (clientData.policies.refund_policy) {
+        policySections.push(`**Refunds:** ${clientData.policies.refund_policy}`);
+      }
+      variables.policies_section = policySections.length > 0 
+        ? policySections.join("\n\n") 
+        : "No additional policies at this time.";
+    } else {
+      variables.policies_section = "No additional policies at this time.";
+    }
+
+    return variables;
+  }
+
+  formatBusinessHours(hours) {
+    // Generate a formatted display of business hours from individual day entries
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const formatted = days
+      .map(day => {
+        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
+        const dayHours = hours[day] || "Closed";
+        return `**${dayName}:** ${dayHours}`;
+      })
+      .join("\n");
+    return formatted;
+  }
+
   processTemplateContent(content, filePath = "") {
     const ext = path.extname(filePath).toLowerCase();
 
-    // Only process template variables in specific files and contexts
-    if (filePath.includes("Retell Agent.json")) {
-      return this.processRetellAgentTemplate(content);
-    }
-    
-    // Process n8n files for prompt injection
-    if (filePath.includes("n8n/") && filePath.includes("answerQuestion.json")) {
-      return this.processN8nAnswerQuestionTemplate(content);
-    }
-
-    // For filenames, always process templates
+    // SPECIAL CASE 1: Filename templating (filePath === "")
     if (filePath === "") {
       let processedContent = content;
       for (const [key, value] of Object.entries(this.templateVariables)) {
@@ -292,9 +402,41 @@ class LayerBuilder {
       return processedContent;
     }
 
-    // For other files, return as-is (no templating in prompts/markdown)
-    // Prompts need to keep {{variables}} for Retell runtime replacement
-    return content;
+    // SPECIAL CASE 2: Retell Agent JSON (complex multi-phase processing)
+    if (filePath.includes("Retell Agent.json")) {
+      return this.processRetellAgentTemplate(content);
+    }
+    
+    // SPECIAL CASE 3: n8n answerQuestion workflow (prompt injection)
+    if (filePath.includes("n8n/") && filePath.includes("answerQuestion.json")) {
+      return this.processN8nAnswerQuestionTemplate(content);
+    }
+
+    // SPECIAL CASE 4: Prompt files (preserve {{variables}} for Retell runtime)
+    if (filePath.includes("prompts/") && ext === ".md") {
+      // Do NOT process templates - Retell needs these at runtime
+      return content;
+    }
+
+    // DEFAULT CASE: All other files get template variable replacement
+    // This includes: CSV files, knowledge base MD, test files, n8n workflows, etc.
+    let processedContent = content;
+    
+    // First, replace template variables (build-time variables)
+    for (const [key, value] of Object.entries(this.templateVariables)) {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+      processedContent = processedContent.replace(regex, value);
+    }
+    
+    // Then, replace client data variables (for knowledge base and sheets)
+    if (this.clientDataVariables) {
+      for (const [key, value] of Object.entries(this.clientDataVariables)) {
+        const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+        processedContent = processedContent.replace(regex, value);
+      }
+    }
+    
+    return processedContent;
   }
 
   processRetellAgentTemplate(content) {
@@ -303,7 +445,7 @@ class LayerBuilder {
 
       // PHASE 1: Apply Build Config (direct agent settings)
       if (jsonData.agent_name !== undefined) {
-        jsonData.agent_name = this.templateVariables.agent_display_name;
+        jsonData.agent_name = this.templateVariables.agent_name;
       }
 
       // Apply voice settings from build_config
@@ -332,6 +474,9 @@ class LayerBuilder {
       // PHASE 4: Update infrastructure (webhooks, transfer numbers)
       this.updateToolWebhookUrls(jsonData.conversationFlow?.tools);
       this.updateTransferNodes(jsonData.conversationFlow?.nodes);
+      
+      // PHASE 5: Inject service types from config into bookAppointment tool
+      this.updateBookAppointmentServices(jsonData.conversationFlow?.tools);
 
       return JSON.stringify(jsonData, null, 2);
     } catch (error) {
@@ -355,11 +500,6 @@ class LayerBuilder {
           const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
           processedPrompt = processedPrompt.replace(regex, value);
         }
-        // Also handle legacy {{agent_name}} -> use agent_display_name
-        processedPrompt = processedPrompt.replace(
-          /\{\{agent_name\}\}/g,
-          this.templateVariables.agent_display_name
-        );
 
         // Find and update the Answer Agent node
         jsonData.nodes.forEach(node => {
@@ -408,6 +548,61 @@ class LayerBuilder {
     });
   }
 
+  updateBookAppointmentServices(tools) {
+    if (!tools || !this.config.client_data?.services) return;
+
+    const services = this.config.client_data.services;
+    if (!Array.isArray(services) || services.length === 0) return;
+
+    let updatedCount = 0;
+
+    // Find and update bookAppointment tool
+    const bookAppointmentTool = tools.find(tool => tool.name === "bookAppointment");
+    if (bookAppointmentTool?.parameters?.properties?.service) {
+      const serviceSchema = bookAppointmentTool.parameters.properties.service;
+
+      // Generate service names array for required field
+      const serviceNames = services.map(s => s.name);
+      serviceSchema.required = serviceNames;
+
+      // Generate properties object with boolean type for each service
+      const serviceProperties = {};
+      services.forEach(service => {
+        serviceProperties[service.name] = {
+          type: "boolean",
+          description: service.description || ""
+        };
+      });
+      serviceSchema.properties = serviceProperties;
+      updatedCount++;
+    }
+
+    // Find and update modifyAppointment tool (nested in updates.service)
+    const modifyAppointmentTool = tools.find(tool => tool.name === "modifyAppointment");
+    if (modifyAppointmentTool?.parameters?.properties?.updates?.properties?.service) {
+      const serviceSchema = modifyAppointmentTool.parameters.properties.updates.properties.service;
+
+      // Generate service names array for required field
+      const serviceNames = services.map(s => s.name);
+      serviceSchema.required = serviceNames;
+
+      // Generate properties object with boolean type for each service
+      const serviceProperties = {};
+      services.forEach(service => {
+        serviceProperties[service.name] = {
+          type: "boolean",
+          description: service.description || ""
+        };
+      });
+      serviceSchema.properties = serviceProperties;
+      updatedCount++;
+    }
+
+    if (updatedCount > 0) {
+      console.log(`✅ Injected ${services.length} service types into ${updatedCount} tool(s) (bookAppointment, modifyAppointment)`);
+    }
+  }
+
   processTemplateFilename(filename) {
     let processedFilename = filename;
 
@@ -416,12 +611,6 @@ class LayerBuilder {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
       processedFilename = processedFilename.replace(regex, value);
     }
-
-    // Also handle legacy {{agent_name}} in filenames -> use agent_display_name
-    processedFilename = processedFilename.replace(
-      /\{\{agent_name\}\}/g,
-      this.templateVariables.agent_display_name
-    );
 
     return processedFilename;
   }
@@ -450,7 +639,7 @@ class LayerBuilder {
         } else if (entry.isFile()) {
           // Include files we can process or important config files
           const ext = path.extname(entry.name).toLowerCase();
-          const isProcessable = [".json", ".md"].includes(ext);
+          const isProcessable = [".json", ".md", ".csv"].includes(ext);
           const isImportant = [
             "package.json",
             "README.md",
