@@ -2,7 +2,7 @@ const fs = require("fs").promises;
 const path = require("path");
 const prettier = require("prettier");
 
-class LayerBuilder {
+class AIVoiceBuilder {
   constructor() {
     this.sourceDir = "src/";
     this.distDir = "dist";
@@ -41,67 +41,45 @@ class LayerBuilder {
       const content = await fs.readFile(filePath, "utf8");
       const ext = path.extname(filePath).toLowerCase();
 
-      // First apply template variable replacement
+      // Apply template replacement first
       let processedContent = this.processTemplateContent(content, filePath);
-      let sizeReduction = 0;
+      let reduction = 0;
+      let countsTowardReduction = false;
 
       if (ext === ".json") {
         try {
-          // Validate JSON after template processing
-          JSON.parse(processedContent);
-
-          // Format with Prettier first
+          // Validate, format, then minify JSON
           const formatted = await prettier.format(processedContent, {
             ...this.prettierConfig,
             parser: "json"
           });
-
-          // Then minify for production
-          const minified = JSON.stringify(JSON.parse(formatted));
-          processedContent = minified;
-
-          sizeReduction = (
-            ((content.length - processedContent.length) / content.length) *
-            100
+          processedContent = JSON.stringify(JSON.parse(formatted));
+          countsTowardReduction = true;
+          reduction = (
+            ((content.length - processedContent.length) / content.length) * 100
           ).toFixed(1);
-        } catch (jsonError) {
-          console.warn(
-            `⚠️ Invalid JSON in ${filePath}, copying as-is: ${jsonError.message}`
-          );
-          // Keep the template-processed content even if JSON is invalid
-          sizeReduction = 0;
+        } catch (err) {
+          console.warn(`⚠️ JSON processing issue in ${filePath}: ${err.message}`);
+          countsTowardReduction = false;
+          reduction = 0;
         }
       } else if (ext === ".md") {
         try {
-          // Format Markdown with Prettier after template processing
-          const formatted = await prettier.format(processedContent, {
+          // Format markdown; do not count reduction
+          processedContent = await prettier.format(processedContent, {
             ...this.prettierConfig,
             parser: "markdown"
           });
-          processedContent = formatted;
-
-          sizeReduction = (
-            ((content.length - processedContent.length) / content.length) *
-            100
-          ).toFixed(1);
-        } catch (mdError) {
-          console.warn(
-            `⚠️ Could not format markdown ${filePath}, copying as-is: ${mdError.message}`
-          );
-          // Keep the template-processed content even if formatting fails
-          sizeReduction = 0;
+          reduction = 0;
+          countsTowardReduction = false;
+        } catch (err) {
+          reduction = 0;
+          countsTowardReduction = false;
         }
-      } else if (ext === ".csv") {
-        // CSV files: template processed, no minification
-        // processedContent already has templates replaced
-        sizeReduction = (
-          ((content.length - processedContent.length) / content.length) *
-          100
-        ).toFixed(1);
       } else {
-        // For other file types, copy as-is
-        processedContent = content;
-        sizeReduction = 0;
+        // CSV/others: only templating
+        reduction = 0;
+        countsTowardReduction = false;
       }
 
       await fs.writeFile(outputPath, processedContent, "utf8");
@@ -109,7 +87,8 @@ class LayerBuilder {
       return {
         original: content.length,
         processed: processedContent.length,
-        reduction: sizeReduction
+        reduction,
+        countsTowardReduction
       };
     } catch (error) {
       console.error(`❌ Error processing ${filePath}:`, error.message);
@@ -123,43 +102,24 @@ class LayerBuilder {
 
   async loadTemplateVariables() {
     try {
-      // Load configuration
-      try {
-        this.config = JSON.parse(await fs.readFile("config.json", "utf8"));
-      } catch {
-        console.log("📋 No config.json found, using defaults");
-        this.config = { templating: { auto_generate_from_repo: true } };
-      }
+      // Attempt to read config.json
+      const raw = await fs.readFile(path.join(process.cwd(), "config.json"), "utf8");
+      this.config = JSON.parse(raw);
 
-      const packageJson = JSON.parse(await fs.readFile("package.json", "utf8"));
-      const buildDate = new Date().toISOString();
+      const packageJson = require("./package.json");
+      const repoName = (packageJson.name || "ai-voice-receptionist").replace(/@.*\//, "");
+      const businessName = this.generateBusinessName(repoName);
 
-      // PHASE 1: Template Variables (for filenames and general templating)
-      if (this.config.templating?.auto_generate_from_repo !== false) {
-        const repoName = packageJson.name || "ai-voice-receptionist";
-        const businessName = this.config.templating?.variables?.business_name || 
-                           this.generateBusinessName(repoName);
-        
-        this.templateVariables = {
-          build_date: buildDate,
-          repository_name: repoName,
-          version: packageJson.version || "1.0.0",
+      // PHASE 1: Template Variables (build-time)
+      this.templateVariables = {
+        build_date: new Date().toISOString(),
+        repository_name: repoName,
+        version: packageJson.version || "1.0.0",
+        ...(this.config.templating?.variables || {
           business_name: businessName,
-          agent_name: this.config.templating?.variables?.agent_name || 
-                     `${businessName} AI Voice Receptionist`
-        };
-      } else {
-        // Use explicit config values
-        this.templateVariables = {
-          build_date: buildDate,
-          repository_name: packageJson.name || "ai-voice-receptionist",
-          version: packageJson.version || "1.0.0",
-          ...this.config.templating?.variables || {
-            business_name: "Your Business",
-            agent_name: "Your Business AI Voice Receptionist"
-          }
-        };
-      }
+          agent_name: "Your Business AI Voice Receptionist"
+        })
+      };
 
       // PHASE 2: Build Config (for direct agent JSON modification)
       this.buildConfig = {
@@ -178,7 +138,6 @@ class LayerBuilder {
       };
 
       // PHASE 3: Runtime Variables (for Retell dynamic_variables)
-      // Merge template variables with explicit runtime_variables from config
       const defaultRuntimeVars = {
         build_date: this.templateVariables.build_date,
         repository_name: this.templateVariables.repository_name,
@@ -188,8 +147,6 @@ class LayerBuilder {
         ai_support_hours: "24/7",
         transfer_phone_number: this.buildConfig.infrastructure.transfer_phone_number
       };
-      
-      // Override/extend with explicit runtime_variables from config
       this.runtimeVariables = {
         ...defaultRuntimeVars,
         ...(this.config.runtime_variables || {})
@@ -204,7 +161,7 @@ class LayerBuilder {
       console.warn("⚠️ Could not load configuration, using defaults:", error.message);
       this.setDefaults();
     }
-    
+
     // Load prompts after template variables are set
     await this.loadPrompts();
   }
@@ -702,6 +659,14 @@ class LayerBuilder {
         stats.totalFiles++;
         stats.totalOriginalSize += result.original;
         stats.totalProcessedSize += result.processed;
+        if (!stats.totalOriginalSizeForReduction) {
+          stats.totalOriginalSizeForReduction = 0;
+          stats.totalProcessedSizeForReduction = 0;
+        }
+        if (result.countsTowardReduction) {
+          stats.totalOriginalSizeForReduction += result.original;
+          stats.totalProcessedSizeForReduction += result.processed;
+        }
 
         console.log(
           `✅ ${processedRelativePath} - ${result.reduction}% size reduction`
@@ -777,7 +742,16 @@ class LayerBuilder {
         totalFiles: stats.totalFiles,
         originalSize: `${(stats.totalOriginalSize / 1024).toFixed(2)} KB`,
         processedSize: `${(stats.totalProcessedSize / 1024).toFixed(2)} KB`,
-        totalReduction: `${(((stats.totalOriginalSize - stats.totalProcessedSize) / stats.totalOriginalSize) * 100).toFixed(1)}%`,
+        // Reduction is calculated only for truly minified artifact types (e.g., JSON)
+        totalReduction: stats.totalOriginalSizeForReduction
+          ? `${(
+              ((
+                stats.totalOriginalSizeForReduction -
+                stats.totalProcessedSizeForReduction
+              ) /
+                stats.totalOriginalSizeForReduction) * 100
+            ).toFixed(1)}%`
+          : "0.0%",
         processingTime: `${Date.now() - stats.processingTime}ms`
       }
     };
@@ -809,7 +783,7 @@ class LayerBuilder {
 
 // CLI Interface
 async function main() {
-  const builder = new LayerBuilder();
+  const builder = new AIVoiceBuilder();
   await builder.init();
 
   const command = process.argv[2];
@@ -837,4 +811,4 @@ if (require.main === module) {
   main().catch(console.error);
 }
 
-module.exports = LayerBuilder;
+module.exports = AIVoiceBuilder;

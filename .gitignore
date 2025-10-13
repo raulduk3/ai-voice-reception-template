@@ -53,3 +53,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.tempnode_modules/
+
+# Distribution files
+dist/
+*.txt

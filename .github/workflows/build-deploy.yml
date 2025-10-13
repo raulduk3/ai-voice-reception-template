@@ -71,20 +71,8 @@ jobs:
           echo "package_version=${VERSION}" >> $GITHUB_OUTPUT
           echo "Current version: v${VERSION}"
 
-      - name: Check if tag exists
-        if: github.ref == 'refs/heads/main'
-        id: tag_check
-        run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.version.outputs.version }}$"; then
-            echo "Tag ${{ steps.version.outputs.version }} already exists"
-            echo "tag_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Tag ${{ steps.version.outputs.version }} does not exist"
-            echo "tag_exists=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Extract build info for release
-        if: github.ref == 'refs/heads/main' && steps.tag_check.outputs.tag_exists == 'false'
+        if: github.ref == 'refs/heads/main'
         id: build_info
         run: |
           BUILD_STATS=$(cat dist/build-info.json)
@@ -102,8 +90,8 @@ jobs:
           echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
           echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && steps.tag_check.outputs.tag_exists == 'false'
+      - name: Create or Update GitHub Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
@@ -149,6 +137,8 @@ jobs:
             layer7-ai-voice-optimized.tar.gz
           draft: false
           prerelease: false
+          make_latest: true
+          generate_release_notes: false
 
       - name: Build Status Summary
         run: |
@@ -159,14 +149,8 @@ jobs:
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "- **Current Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Package Version**: ${{ steps.version.outputs.package_version }}" >> $GITHUB_STEP_SUMMARY
-            
-            if [ "${{ steps.tag_check.outputs.tag_exists }}" == "false" ]; then
-              echo "- **Release Action**: 🎉 Created new release ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-              echo "- **Download**: [Latest Release](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "- **Release Action**: ⏭️ Skipped (version ${{ steps.version.outputs.version }} already exists)" >> $GITHUB_STEP_SUMMARY
-              echo "- **Existing Releases**: [View All Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY
-            fi
+            echo "- **Release Action**: 🚀 Created/Updated release ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Download**: [Latest Release](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY
             
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "### 📊 Build Statistics" >> $GITHUB_STEP_SUMMARY
