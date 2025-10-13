@@ -1,7 +1,9 @@
 # Prompt Engineering & Security
 
 ## Purpose
-Use this prompt with GitHub Copilot to update AI prompts while maintaining security standards and preventing PII exposure.
+
+Use this prompt with GitHub Copilot to update AI prompts while maintaining security standards and
+preventing PII exposure.
 
 ## Prompt Template
 
@@ -36,16 +38,19 @@ Requirements:
 ## Security Principles
 
 ### PII Protection
+
 - **Never expose** customer names, phone numbers, or appointment details in general responses
 - **Always route** personal queries through `identifyAppointment` flow
 - **Filter sensitive** information before responding
 
 ### Response Formats
+
 - **Structured responses** for answerQuestion tool
 - **Clear escalation** paths for uncertain scenarios
 - **Consistent formatting** across all prompt responses
 
 ### Dynamic Variables
+
 - Use `{{variable_name}}` syntax for runtime replacement
 - Reference business-specific information through dynamic variables
 - Maintain template compatibility across client configurations
@@ -53,12 +58,14 @@ Requirements:
 ## Prompt Types
 
 ### Core Prompt (`src/prompts/{{business_name}} Core Prompt.md`)
+
 - Main agent personality and instructions
 - Business-specific conversation guidelines
 - Router logic and escalation rules
 - Gets injected into Retell agent `global_prompt`
 
 ### RAG Prompt (`src/prompts/{{business_name}} Answer Question - RAG Agent Prompt.md`)
+
 - Security-focused information retrieval guidelines
 - PII protection rules for knowledge base queries
 - Structured response formats for Q&A

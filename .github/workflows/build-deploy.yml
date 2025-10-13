@@ -52,16 +52,16 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-            name: ${{ env.REPO_NAME }}-dist
-            path: dist/
-            retention-days: 30
+          name: ${{ env.REPO_NAME }}-dist
+          path: dist/
+          retention-days: 30
 
       - name: Create release archive
         if: github.ref == 'refs/heads/main'
         run: |
-            cd dist
-            tar -czf ../${{ env.REPO_NAME }}-optimized.tar.gz *
-            cd ..
+          cd dist
+          tar -czf ../${{ env.REPO_NAME }}-optimized.tar.gz *
+          cd ..
 
       - name: Get version from package.json
         if: github.ref == 'refs/heads/main'
@@ -83,7 +83,7 @@ jobs:
           SIZE_REDUCTION=$(echo $BUILD_STATS | jq -r '.stats.totalReduction')
           BUILD_TIME=$(echo $BUILD_STATS | jq -r '.stats.processingTime')
           BUILD_DATE=$(echo $BUILD_STATS | jq -r '.buildTime')
-          
+
           echo "total_files=$TOTAL_FILES" >> $GITHUB_OUTPUT
           echo "original_size=$ORIGINAL_SIZE" >> $GITHUB_OUTPUT
           echo "processed_size=$PROCESSED_SIZE" >> $GITHUB_OUTPUT
@@ -95,23 +95,23 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-              tag_name: ${{ steps.version.outputs.version }}
-              name: "${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}"
-              body: |
-                # ${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}
-              
-                **Build Information:**
-                - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
-                - 📦 **Size Reduction**: ${{ steps.build_info.outputs.size_reduction }} (${{ steps.build_info.outputs.original_size }} → ${{ steps.build_info.outputs.processed_size }})
-                - ⚡ **Build Time**: ${{ steps.build_info.outputs.build_time }}
-                - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
-                - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
-              files: |
-                ${{ env.REPO_NAME }}-optimized.tar.gz
-              draft: false
-              prerelease: false
-              make_latest: true
-              generate_release_notes: false
+          tag_name: ${{ steps.version.outputs.version }}
+          name: "${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}"
+          body: |
+            # ${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}
+
+            **Build Information:**
+            - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
+            - 📦 **Size Reduction**: ${{ steps.build_info.outputs.size_reduction }} (${{ steps.build_info.outputs.original_size }} → ${{ steps.build_info.outputs.processed_size }})
+            - ⚡ **Build Time**: ${{ steps.build_info.outputs.build_time }}
+            - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
+            - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+          files: |
+            ${{ env.REPO_NAME }}-optimized.tar.gz
+          draft: false
+          prerelease: false
+          make_latest: true
+          generate_release_notes: false
 
       - name: Build Status Summary
         run: |

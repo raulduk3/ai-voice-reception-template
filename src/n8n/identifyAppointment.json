@@ -9,10 +9,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -600,
-        -185
-      ],
+      "position": [-600, -185],
       "id": "28941e52-0874-48f4-ada8-616f2a71ce12",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
@@ -25,10 +22,7 @@
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -380,
-        -185
-      ]
+      "position": [-380, -185]
     },
     {
       "parameters": {
@@ -62,10 +56,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        -160,
-        -20
-      ],
+      "position": [-160, -20],
       "id": "1456e376-fb06-48c3-b9f1-1443d4a7967a",
       "name": "Get Appointments from Sheet",
       "credentials": {
@@ -83,10 +74,7 @@
       "name": "Format Matched Appointments",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        280,
-        -360
-      ]
+      "position": [280, -360]
     },
     {
       "parameters": {
@@ -96,10 +84,7 @@
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        500,
-        -360
-      ]
+      "position": [500, -360]
     },
     {
       "parameters": {
@@ -109,10 +94,7 @@
       "name": "Handle Validation Failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        500,
-        65
-      ]
+      "position": [500, 65]
     },
     {
       "parameters": {
@@ -122,10 +104,7 @@
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        500,
-        -140
-      ]
+      "position": [500, -140]
     },
     {
       "parameters": {
@@ -135,10 +114,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        720,
-        -135
-      ]
+      "position": [720, -135]
     },
     {
       "parameters": {
@@ -149,10 +125,7 @@
       "name": "Merge Search Data with Appointments",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [
-        60,
-        -360
-      ]
+      "position": [60, -360]
     }
   ],
   "connections": {

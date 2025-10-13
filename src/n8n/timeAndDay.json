@@ -9,10 +9,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -340,
-        -60
-      ],
+      "position": [-340, -60],
       "id": "644feef3-b2f2-4d59-ab12-f103c1dd06e0",
       "name": "Webhook",
       "webhookId": "46d36bed-b753-453e-b44f-7011e7b98041"
@@ -25,10 +22,7 @@
       },
       "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
-      "position": [
-        100,
-        -60
-      ],
+      "position": [100, -60],
       "id": "5cb085ef-9f13-4f50-acc1-cffd96f49b5e",
       "name": "Date & Time"
     },
@@ -38,10 +32,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.3,
-      "position": [
-        540,
-        -60
-      ],
+      "position": [540, -60],
       "id": "c6df5f79-a42b-46fd-88e5-b98b350cfecc",
       "name": "Respond to Webhook"
     },
@@ -53,10 +44,7 @@
       "name": "Format Success",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [
-        320,
-        -60
-      ]
+      "position": [320, -60]
     },
     {
       "parameters": {
@@ -74,10 +62,7 @@
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        -120,
-        -60
-      ],
+      "position": [-120, -60],
       "id": "a3405561-502c-4ade-932b-73f40d79ad69",
       "name": "Edit Fields"
     }

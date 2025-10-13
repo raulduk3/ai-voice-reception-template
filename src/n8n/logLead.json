@@ -12,10 +12,7 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -200,
-        0
-      ],
+      "position": [-200, 0],
       "webhookId": "371606d2-f5b2-462a-814a-ce26a428f966"
     },
     {
@@ -26,10 +23,7 @@
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        0,
-        0
-      ]
+      "position": [0, 0]
     },
     {
       "parameters": {
@@ -120,10 +114,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        200,
-        0
-      ],
+      "position": [200, 0],
       "id": "4d83da6e-d1dc-49da-a25c-1c0f9e86c800",
       "name": "Insert to Google Sheets",
       "credentials": {
@@ -141,10 +132,7 @@
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        400,
-        0
-      ]
+      "position": [400, 0]
     },
     {
       "parameters": {
@@ -154,10 +142,7 @@
       "name": "Handle Validation Failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        200,
-        200
-      ]
+      "position": [200, 200]
     },
     {
       "parameters": {
@@ -167,10 +152,7 @@
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        400,
-        200
-      ]
+      "position": [400, 200]
     },
     {
       "parameters": {
@@ -180,10 +162,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        600,
-        100
-      ]
+      "position": [600, 100]
     }
   ],
   "pinData": {

@@ -12,7 +12,7 @@
       ]
     },
     {
-      "name": "n8n-workflow", 
+      "name": "n8n-workflow",
       "description": "Create or modify n8n workflows following established patterns and best practices",
       "parameters": [
         {
@@ -27,7 +27,7 @@
       "description": "Update AI prompts while maintaining security standards and PII protection",
       "parameters": [
         {
-          "name": "description", 
+          "name": "description",
           "description": "Describe the prompt changes you want to make",
           "required": true
         }

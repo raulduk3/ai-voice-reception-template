@@ -1,7 +1,9 @@
 # n8n Workflow Development
 
 ## Purpose
-Use this prompt with GitHub Copilot to create or modify n8n workflows following established patterns and best practices.
+
+Use this prompt with GitHub Copilot to create or modify n8n workflows following established patterns
+and best practices.
 
 ## Prompt Template
 
@@ -13,7 +15,7 @@ N8N BEST PRACTICES:
 - Use proper error handling with multiple output paths
 - Include data validation and transformation nodes
 - End with Respond to Webhook node with structured JSON
-- Use consistent parameter naming across workflows  
+- Use consistent parameter naming across workflows
 - Include timeout handling for external API calls
 - Follow the existing node naming conventions
 
@@ -46,7 +48,8 @@ All n8n workflows should follow this pattern:
 
 ## Response Format
 
-Always return this structured JSON response format (see `.github/docs/ERROR_HANDLING.md` for complete standards):
+Always return this structured JSON response format (see `.github/docs/ERROR_HANDLING.md` for
+complete standards):
 
 ```json
 {
@@ -57,11 +60,13 @@ Always return this structured JSON response format (see `.github/docs/ERROR_HAND
 ```
 
 **Status Types:**
+
 - **success**: Operation completed successfully
 - **failure**: Business logic validation failed (missing fields, conflicts, not found, etc.)
 - **error**: System/technical error (API failures, timeouts, unexpected exceptions)
 
 **All workflows MUST:**
+
 - Include timestamp in error responses
 - Categorize error types for monitoring
 - Specify retry_possible flag

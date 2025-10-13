@@ -9,10 +9,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        680,
-        -180
-      ],
+      "position": [680, -180],
       "id": "1c14891a-694d-47a9-b222-f47ebe702fbf",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
@@ -25,10 +22,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        1120,
-        -180
-      ]
+      "position": [1120, -180]
     },
     {
       "parameters": {
@@ -38,10 +32,7 @@
       "name": "Error Handler",
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [
-        900,
-        -180
-      ]
+      "position": [900, -180]
     }
   ],
   "pinData": {},

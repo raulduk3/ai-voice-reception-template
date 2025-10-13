@@ -1,6 +1,6 @@
 {
   "_comment": "Layer 7 AI Voice Receptionist Template Configuration",
-  
+
   "templating": {
     "_comment": "Variables used for filename and general template replacement during build",
     "auto_generate_from_repo": false,

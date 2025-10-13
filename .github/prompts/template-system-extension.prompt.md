@@ -1,7 +1,9 @@
 # Template System Extension
 
 ## Purpose
-Use this prompt with GitHub Copilot to extend the template system with new features, configuration options, or client customizations.
+
+Use this prompt with GitHub Copilot to extend the template system with new features, configuration
+options, or client customizations.
 
 ## Prompt Template
 
@@ -105,11 +107,13 @@ Follow these patterns when extending config.json:
 ## Files Modified
 
 ### Core System Files
+
 - `config.json` - Configuration schema extensions
 - `build.js` - LayerBuilder processing methods
 - `README.md` - Documentation updates
 
 ### Template Target Files
+
 - `src/{{agent_name}}.json` - Retell agent configuration
 - `src/{{tool}}-n8n.json` - n8n workflow configurations
 - `src/prompts/{{business_name}}*.md` - Prompt templates

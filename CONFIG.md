@@ -125,7 +125,8 @@ Generated files in `dist/` folder will have:
 
 ## Webhook Configuration
 
-The system supports individual webhook URL configuration for each tool action. This allows you to use different n8n workflows or endpoints for different functions.
+The system supports individual webhook URL configuration for each tool action. This allows you to
+use different n8n workflows or endpoints for different functions.
 
 ### Configuration Structure
 
@@ -134,7 +135,7 @@ The system supports individual webhook URL configuration for each tool action. T
   "webhooks": {
     "base_url": "https://your-n8n-instance.com/webhook",
     "bookAppointment": "unique-webhook-id-1",
-    "answerQuestion": "unique-webhook-id-2", 
+    "answerQuestion": "unique-webhook-id-2",
     "logLead": "unique-webhook-id-3",
     "identifyAppointment": "unique-webhook-id-4",
     "modifyAppointment": "unique-webhook-id-5",
@@ -152,6 +153,7 @@ The system supports individual webhook URL configuration for each tool action. T
 ### Example Generated URLs
 
 With the above configuration:
+
 - `bookAppointment`: `https://your-n8n-instance.com/webhook/unique-webhook-id-1`
 - `answerQuestion`: `https://your-n8n-instance.com/webhook/unique-webhook-id-2`
 - etc.

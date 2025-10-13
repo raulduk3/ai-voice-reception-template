@@ -903,14 +903,7 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
-          "required": [
-            "name",
-            "date",
-            "time",
-            "phone",
-            "timezone",
-            "service"
-          ],
+          "required": ["name", "date", "time", "phone", "timezone", "service"],
           "properties": {
             "date": {
               "type": "string",
@@ -931,10 +924,7 @@
             "service": {
               "description": "Type of service requested (only one can be true). NOTE: Service types are automatically injected from config.json client_data.services during build.",
               "type": "object",
-              "required": [
-                "Consultation",
-                "Follow-Up"
-              ],
+              "required": ["Consultation", "Follow-Up"],
               "properties": {
                 "Consultation": {
                   "type": "boolean",
@@ -982,9 +972,7 @@
               "description": "Optional. Leave empty for general business questions. Populate with appointment details from identifyAppointment response when caller asks about their specific appointment. RAG uses this to provide personalized answers while protecting other customers' privacy."
             }
           },
-          "required": [
-            "question"
-          ]
+          "required": ["question"]
         }
       },
       {
@@ -1002,11 +990,7 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
-          "required": [
-            "phone",
-            "name",
-            "email"
-          ],
+          "required": ["phone", "name", "email"],
           "properties": {
             "name": {
               "type": "string",
@@ -1050,10 +1034,7 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
-          "required": [
-            "name",
-            "phone"
-          ],
+          "required": ["name", "phone"],
           "properties": {
             "name": {
               "type": "string",
@@ -1093,10 +1074,7 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
-          "required": [
-            "appointment_id",
-            "updates"
-          ],
+          "required": ["appointment_id", "updates"],
           "properties": {
             "updates": {
               "type": "object",
@@ -1117,10 +1095,7 @@
                 "service": {
                   "description": "Updated service type selection (same schema as bookAppointment). NOTE: Service types are dynamically injected during build from config.json client_data.services array.",
                   "type": "object",
-                  "required": [
-                    "Consultation",
-                    "Follow-Up"
-                  ],
+                  "required": ["Consultation", "Follow-Up"],
                   "properties": {
                     "Consultation": {
                       "type": "boolean",
@@ -1168,9 +1143,7 @@
         "response_variables": {},
         "parameters": {
           "type": "object",
-          "required": [
-            "appointment_id"
-          ],
+          "required": ["appointment_id"],
           "properties": {
             "appointment_id": {
               "type": "string",

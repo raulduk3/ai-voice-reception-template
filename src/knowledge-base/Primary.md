@@ -1,6 +1,7 @@
 # {{business_name}}
 
 **Contact Information:**
+
 - Business Name: {{business_name}}
 - Email: {{client_email}}
 - Phone: {{client_phone}}
@@ -47,4 +48,3 @@
 ## Additional Policies
 
 {{policies_section}}
- 

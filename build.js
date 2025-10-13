@@ -56,10 +56,13 @@ class AIVoiceBuilder {
           processedContent = JSON.stringify(JSON.parse(formatted));
           countsTowardReduction = true;
           reduction = (
-            ((content.length - processedContent.length) / content.length) * 100
+            ((content.length - processedContent.length) / content.length) *
+            100
           ).toFixed(1);
         } catch (err) {
-          console.warn(`⚠️ JSON processing issue in ${filePath}: ${err.message}`);
+          console.warn(
+            `⚠️ JSON processing issue in ${filePath}: ${err.message}`
+          );
           countsTowardReduction = false;
           reduction = 0;
         }
@@ -103,11 +106,17 @@ class AIVoiceBuilder {
   async loadTemplateVariables() {
     try {
       // Attempt to read config.json
-      const raw = await fs.readFile(path.join(process.cwd(), "config.json"), "utf8");
+      const raw = await fs.readFile(
+        path.join(process.cwd(), "config.json"),
+        "utf8"
+      );
       this.config = JSON.parse(raw);
 
       const packageJson = require("./package.json");
-      const repoName = (packageJson.name || "ai-voice-receptionist").replace(/@.*\//, "");
+      const repoName = (packageJson.name || "ai-voice-receptionist").replace(
+        /@.*\//,
+        ""
+      );
       const businessName = this.generateBusinessName(repoName);
 
       // PHASE 1: Template Variables (build-time)
@@ -145,7 +154,8 @@ class AIVoiceBuilder {
         business_name: this.templateVariables.business_name,
         agent_name: this.templateVariables.agent_name,
         ai_support_hours: "24/7",
-        transfer_phone_number: this.buildConfig.infrastructure.transfer_phone_number
+        transfer_phone_number:
+          this.buildConfig.infrastructure.transfer_phone_number
       };
       this.runtimeVariables = {
         ...defaultRuntimeVars,
@@ -153,12 +163,19 @@ class AIVoiceBuilder {
       };
 
       // PHASE 4: Client Data Variables (for knowledge base and sheets generation)
-      this.clientDataVariables = this.processClientData(this.config.client_data || {});
+      this.clientDataVariables = this.processClientData(
+        this.config.client_data || {}
+      );
 
       console.log("✅ Configuration loaded successfully");
-      console.log(`📋 Template Variables: ${Object.keys(this.templateVariables).join(", ")}`);
+      console.log(
+        `📋 Template Variables: ${Object.keys(this.templateVariables).join(", ")}`
+      );
     } catch (error) {
-      console.warn("⚠️ Could not load configuration, using defaults:", error.message);
+      console.warn(
+        "⚠️ Could not load configuration, using defaults:",
+        error.message
+      );
       this.setDefaults();
     }
 
@@ -182,7 +199,10 @@ class AIVoiceBuilder {
         interruption_sensitivity: 0.9
       },
       infrastructure: { transfer_phone_number: "+1234567890" },
-      webhooks: { base_url: "https://n8n.srv836523.hstgr.cloud/webhook", tools: {} }
+      webhooks: {
+        base_url: "https://n8n.srv836523.hstgr.cloud/webhook",
+        tools: {}
+      }
     };
     this.runtimeVariables = {
       build_date: buildDate,
@@ -200,16 +220,20 @@ class AIVoiceBuilder {
   async loadPrompts() {
     try {
       // Load core prompt (for Retell agent global_prompt) from dist directory
-      const corePromptPath = this.processTemplateFilename('dist/prompts/{{business_name}} Core Prompt.md');
-      this.corePrompt = await fs.readFile(corePromptPath, 'utf8');
-      
+      const corePromptPath = this.processTemplateFilename(
+        "dist/prompts/{{business_name}} Core Prompt.md"
+      );
+      this.corePrompt = await fs.readFile(corePromptPath, "utf8");
+
       // Load RAG prompt (for answerQuestion n8n workflow) from dist directory
-      const ragPromptPath = this.processTemplateFilename('dist/prompts/{{business_name}} Answer Question - RAG Agent Prompt.md');
-      this.ragPrompt = await fs.readFile(ragPromptPath, 'utf8');
-      
-      console.log('📝 Prompts loaded successfully');
+      const ragPromptPath = this.processTemplateFilename(
+        "dist/prompts/{{business_name}} Answer Question - RAG Agent Prompt.md"
+      );
+      this.ragPrompt = await fs.readFile(ragPromptPath, "utf8");
+
+      console.log("📝 Prompts loaded successfully");
     } catch (error) {
-      console.warn('⚠️ Could not load prompts:', error.message);
+      console.warn("⚠️ Could not load prompts:", error.message);
       this.corePrompt = null;
       this.ragPrompt = null;
     }
@@ -241,12 +265,13 @@ class AIVoiceBuilder {
       variables.client_website = info.website || "";
       variables.client_timezone = info.timezone || "America/Chicago";
       variables.client_description = info.description || "";
-      
+
       // Address formatting
       if (info.address) {
         const addr = info.address;
         if (addr.street) {
-          variables.client_location = `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`.trim();
+          variables.client_location =
+            `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`.trim();
         } else {
           variables.client_location = addr.city || "Remote";
         }
@@ -269,7 +294,7 @@ class AIVoiceBuilder {
           return line;
         })
         .join("\n");
-      
+
       // Services as CSV rows
       variables.services_csv = clientData.services
         .map(service => `${service.name},${service.duration_minutes}`)
@@ -282,7 +307,8 @@ class AIVoiceBuilder {
     // Business Hours
     if (clientData.business_hours) {
       const hours = clientData.business_hours;
-      variables.business_hours_display = hours.display || this.formatBusinessHours(hours);
+      variables.business_hours_display =
+        hours.display || this.formatBusinessHours(hours);
       variables.business_hours_notes = hours.notes || "";
     } else {
       variables.business_hours_display = "Please contact us for hours.";
@@ -291,12 +317,21 @@ class AIVoiceBuilder {
 
     // Booking Info
     if (clientData.booking) {
-      variables.booking_advance_notice = clientData.booking.advance_notice_required || "24 hours";
-      variables.cancellation_policy = clientData.booking.cancellation_policy || "Please contact us for our cancellation policy.";
-      variables.booking_instructions = clientData.booking.booking_instructions || "Contact us to schedule an appointment.";
-      
-      if (clientData.booking.payment_methods && clientData.booking.payment_methods.length > 0) {
-        variables.payment_methods = clientData.booking.payment_methods.join(", ");
+      variables.booking_advance_notice =
+        clientData.booking.advance_notice_required || "24 hours";
+      variables.cancellation_policy =
+        clientData.booking.cancellation_policy ||
+        "Please contact us for our cancellation policy.";
+      variables.booking_instructions =
+        clientData.booking.booking_instructions ||
+        "Contact us to schedule an appointment.";
+
+      if (
+        clientData.booking.payment_methods &&
+        clientData.booking.payment_methods.length > 0
+      ) {
+        variables.payment_methods =
+          clientData.booking.payment_methods.join(", ");
       } else {
         variables.payment_methods = "";
       }
@@ -315,17 +350,24 @@ class AIVoiceBuilder {
     if (clientData.policies) {
       const policySections = [];
       if (clientData.policies.no_show_policy) {
-        policySections.push(`**No-Show Policy:** ${clientData.policies.no_show_policy}`);
+        policySections.push(
+          `**No-Show Policy:** ${clientData.policies.no_show_policy}`
+        );
       }
       if (clientData.policies.late_arrival_policy) {
-        policySections.push(`**Late Arrival:** ${clientData.policies.late_arrival_policy}`);
+        policySections.push(
+          `**Late Arrival:** ${clientData.policies.late_arrival_policy}`
+        );
       }
       if (clientData.policies.refund_policy) {
-        policySections.push(`**Refunds:** ${clientData.policies.refund_policy}`);
+        policySections.push(
+          `**Refunds:** ${clientData.policies.refund_policy}`
+        );
       }
-      variables.policies_section = policySections.length > 0 
-        ? policySections.join("\n\n") 
-        : "No additional policies at this time.";
+      variables.policies_section =
+        policySections.length > 0
+          ? policySections.join("\n\n")
+          : "No additional policies at this time.";
     } else {
       variables.policies_section = "No additional policies at this time.";
     }
@@ -335,7 +377,15 @@ class AIVoiceBuilder {
 
   formatBusinessHours(hours) {
     // Generate a formatted display of business hours from individual day entries
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const days = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday"
+    ];
     const formatted = days
       .map(day => {
         const dayName = day.charAt(0).toUpperCase() + day.slice(1);
@@ -363,7 +413,7 @@ class AIVoiceBuilder {
     if (filePath.includes("Retell Agent.json")) {
       return this.processRetellAgentTemplate(content);
     }
-    
+
     // SPECIAL CASE 3: n8n answerQuestion workflow (prompt injection)
     if (filePath.includes("n8n/") && filePath.includes("answerQuestion.json")) {
       return this.processN8nAnswerQuestionTemplate(content);
@@ -378,13 +428,13 @@ class AIVoiceBuilder {
     // DEFAULT CASE: All other files get template variable replacement
     // This includes: CSV files, knowledge base MD, test files, n8n workflows, etc.
     let processedContent = content;
-    
+
     // First, replace template variables (build-time variables)
     for (const [key, value] of Object.entries(this.templateVariables)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
       processedContent = processedContent.replace(regex, value);
     }
-    
+
     // Then, replace client data variables (for knowledge base and sheets)
     if (this.clientDataVariables) {
       for (const [key, value] of Object.entries(this.clientDataVariables)) {
@@ -392,7 +442,7 @@ class AIVoiceBuilder {
         processedContent = processedContent.replace(regex, value);
       }
     }
-    
+
     return processedContent;
   }
 
@@ -410,14 +460,19 @@ class AIVoiceBuilder {
         jsonData.voice_id = this.buildConfig.voice_settings.voice_id;
       }
       if (jsonData.max_call_duration_ms !== undefined) {
-        jsonData.max_call_duration_ms = this.buildConfig.voice_settings.max_call_duration_ms;
+        jsonData.max_call_duration_ms =
+          this.buildConfig.voice_settings.max_call_duration_ms;
       }
       if (jsonData.interruption_sensitivity !== undefined) {
-        jsonData.interruption_sensitivity = this.buildConfig.voice_settings.interruption_sensitivity;
+        jsonData.interruption_sensitivity =
+          this.buildConfig.voice_settings.interruption_sensitivity;
       }
 
       // PHASE 2: Inject Prompts (with {{variables}} preserved)
-      if (this.corePrompt && jsonData.conversationFlow?.global_prompt !== undefined) {
+      if (
+        this.corePrompt &&
+        jsonData.conversationFlow?.global_prompt !== undefined
+      ) {
         jsonData.conversationFlow.global_prompt = this.corePrompt;
       }
 
@@ -431,7 +486,7 @@ class AIVoiceBuilder {
       // PHASE 4: Update infrastructure (webhooks, transfer numbers)
       this.updateToolWebhookUrls(jsonData.conversationFlow?.tools);
       this.updateTransferNodes(jsonData.conversationFlow?.nodes);
-      
+
       // PHASE 5: Inject service types from config into bookAppointment tool
       this.updateBookAppointmentServices(jsonData.conversationFlow?.tools);
 
@@ -460,9 +515,11 @@ class AIVoiceBuilder {
 
         // Find and update the Answer Agent node
         jsonData.nodes.forEach(node => {
-          if (node.name === "Answer Agent" && 
-              node.type === "@n8n/n8n-nodes-langchain.agent" &&
-              node.parameters?.options?.systemMessage !== undefined) {
+          if (
+            node.name === "Answer Agent" &&
+            node.type === "@n8n/n8n-nodes-langchain.agent" &&
+            node.parameters?.options?.systemMessage !== undefined
+          ) {
             node.parameters.options.systemMessage = processedPrompt;
           }
         });
@@ -483,7 +540,8 @@ class AIVoiceBuilder {
 
     nodes.forEach(node => {
       if (node.type === "transfer_call" && node.transfer_destination?.number) {
-        node.transfer_destination.number = this.buildConfig.infrastructure.transfer_phone_number;
+        node.transfer_destination.number =
+          this.buildConfig.infrastructure.transfer_phone_number;
       }
     });
   }
@@ -514,7 +572,9 @@ class AIVoiceBuilder {
     let updatedCount = 0;
 
     // Find and update bookAppointment tool
-    const bookAppointmentTool = tools.find(tool => tool.name === "bookAppointment");
+    const bookAppointmentTool = tools.find(
+      tool => tool.name === "bookAppointment"
+    );
     if (bookAppointmentTool?.parameters?.properties?.service) {
       const serviceSchema = bookAppointmentTool.parameters.properties.service;
 
@@ -535,9 +595,15 @@ class AIVoiceBuilder {
     }
 
     // Find and update modifyAppointment tool (nested in updates.service)
-    const modifyAppointmentTool = tools.find(tool => tool.name === "modifyAppointment");
-    if (modifyAppointmentTool?.parameters?.properties?.updates?.properties?.service) {
-      const serviceSchema = modifyAppointmentTool.parameters.properties.updates.properties.service;
+    const modifyAppointmentTool = tools.find(
+      tool => tool.name === "modifyAppointment"
+    );
+    if (
+      modifyAppointmentTool?.parameters?.properties?.updates?.properties
+        ?.service
+    ) {
+      const serviceSchema =
+        modifyAppointmentTool.parameters.properties.updates.properties.service;
 
       // Generate service names array for required field
       const serviceNames = services.map(s => s.name);
@@ -556,7 +622,9 @@ class AIVoiceBuilder {
     }
 
     if (updatedCount > 0) {
-      console.log(`✅ Injected ${services.length} service types into ${updatedCount} tool(s) (bookAppointment, modifyAppointment)`);
+      console.log(
+        `✅ Injected ${services.length} service types into ${updatedCount} tool(s) (bookAppointment, modifyAppointment)`
+      );
     }
   }
 
@@ -651,10 +719,7 @@ class AIVoiceBuilder {
 
       if (fileInfo.isProcessable) {
         // Process and optimize the file
-        const result = await this.processFile(
-          fileInfo.sourcePath,
-          outputPath
-        );
+        const result = await this.processFile(fileInfo.sourcePath, outputPath);
 
         stats.totalFiles++;
         stats.totalOriginalSize += result.original;
@@ -684,10 +749,7 @@ class AIVoiceBuilder {
 
         stats.totalFiles++;
         stats.totalOriginalSize += stat.size;
-        stats.totalProcessedSize += Buffer.byteLength(
-          processedContent,
-          "utf8"
-        );
+        stats.totalProcessedSize += Buffer.byteLength(processedContent, "utf8");
 
         console.log(`📄 ${processedRelativePath} - template processed`);
       }
@@ -716,8 +778,12 @@ class AIVoiceBuilder {
     console.log(`📋 Found ${allFiles.length} files to process`);
 
     // First phase: Process prompt files first
-    const promptFiles = allFiles.filter(f => f.relativePath.includes('prompts/'));
-    const otherFiles = allFiles.filter(f => !f.relativePath.includes('prompts/'));
+    const promptFiles = allFiles.filter(f =>
+      f.relativePath.includes("prompts/")
+    );
+    const otherFiles = allFiles.filter(
+      f => !f.relativePath.includes("prompts/")
+    );
 
     // Process prompt files first
     for (const fileInfo of promptFiles) {
@@ -745,11 +811,10 @@ class AIVoiceBuilder {
         // Reduction is calculated only for truly minified artifact types (e.g., JSON)
         totalReduction: stats.totalOriginalSizeForReduction
           ? `${(
-              ((
-                stats.totalOriginalSizeForReduction -
-                stats.totalProcessedSizeForReduction
-              ) /
-                stats.totalOriginalSizeForReduction) * 100
+              ((stats.totalOriginalSizeForReduction -
+                stats.totalProcessedSizeForReduction) /
+                stats.totalOriginalSizeForReduction) *
+              100
             ).toFixed(1)}%`
           : "0.0%",
         processingTime: `${Date.now() - stats.processingTime}ms`

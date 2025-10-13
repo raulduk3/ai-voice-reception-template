@@ -1,13 +1,16 @@
 # GitHub Copilot Slash Commands for Layer 7 Voice AI
 
-You are an AI voice receptionist template system expert. When users invoke slash commands, respond with structured guidance following the architectural patterns below.
+You are an AI voice receptionist template system expert. When users invoke slash commands, respond
+with structured guidance following the architectural patterns below.
 
 ## Available Slash Commands
 
 ### `/retell-flow [description]`
+
 Help modify Retell agent conversation flows and conversation node instructions.
 
 **Architecture Rules:**
+
 - Use conversation nodes for user interaction, function nodes for n8n tool calls
 - Always include Success/Failure/Error edges for function nodes
 - Keep prompts conversational and natural, avoid technical language
@@ -16,6 +19,7 @@ Help modify Retell agent conversation flows and conversation node instructions.
 - Include human escalation paths for complex scenarios
 
 **Node Instruction Best Practices:**
+
 - Structure complex node instructions using sectional format (Task, Approach, Transition Triggers)
 - Be explicit about when to transition using specific trigger words/phrases
 - Keep responses concise: 1-2 sentences unless explaining complex topics
@@ -28,6 +32,7 @@ Help modify Retell agent conversation flows and conversation node instructions.
 - Define clear success criteria for each transition edge
 
 **Response Format:**
+
 1. Analyze the requested flow modification (structure vs instruction optimization)
 2. Provide step-by-step implementation plan
 3. Include specific node configurations with properly structured instructions
@@ -36,9 +41,11 @@ Help modify Retell agent conversation flows and conversation node instructions.
 6. List files that need modification
 
 ### `/n8n-workflow [description]`
+
 Create or modify n8n workflows following established patterns.
 
 **Architecture Rules:**
+
 - Start with Webhook node using POST method
 - Use proper error handling with multiple output paths
 - Include data validation and transformation nodes
@@ -48,6 +55,7 @@ Create or modify n8n workflows following established patterns.
 - Follow existing node naming conventions
 
 **Response Format:**
+
 1. Design workflow structure with node sequence
 2. Specify webhook response format: `{"status": "success/failure/error", "data": {}, "message": ""}`
 3. Include data validation and error handling steps
@@ -55,9 +63,11 @@ Create or modify n8n workflows following established patterns.
 5. Provide complete n8n workflow JSON structure
 
 ### `/secure-prompt [description]`
+
 Update AI prompts while maintaining security standards and PII protection.
 
 **Security Rules:**
+
 - NEVER allow PII disclosure in answerQuestion responses
 - Always route appointment-specific queries through identifyAppointment
 - Use specific response formats for structured data
@@ -66,6 +76,7 @@ Update AI prompts while maintaining security standards and PII protection.
 - Reference dynamic variables with `{{variable_name}}` syntax
 
 **Response Format:**
+
 1. Identify which prompts need updates (Core Prompt vs RAG Prompt)
 2. Show specific prompt modifications with security constraints
 3. Include dynamic variable usage examples
@@ -73,9 +84,11 @@ Update AI prompts while maintaining security standards and PII protection.
 5. List security validation checkpoints
 
 ### `/extend-template [description]`
+
 Extend the template system with new features or configuration options.
 
 **Template System Architecture:**
+
 - config.json drives all template variables and behavior
 - build.js processes templates with LayerBuilder class
 - **Three-phase build process:**
@@ -93,6 +106,7 @@ Extend the template system with new features or configuration options.
 - Runtime variable support for Retell agent
 
 **Response Format:**
+
 1. Analyze config.json schema requirements
 2. Design LayerBuilder method extensions
 3. Specify template processing steps
@@ -103,6 +117,7 @@ Extend the template system with new features or configuration options.
 ## Dynamic Variables Reference
 
 **Runtime variables** available in Retell prompts (populated from config.json):
+
 - `{{business_name}}` - Client business name
 - `{{business_hours}}` - Operating hours
 - `{{business_phone}}` - Contact phone number
@@ -111,19 +126,24 @@ Extend the template system with new features or configuration options.
 - `{{transfer_phone_number}}` - Human escalation number
 
 **Temporal variables** (only use in function-calling or time-aware nodes):
+
 - `{{dayAndTime}}` - Current date and time (from dayAndTime tool)
 - `{{timezone}}` - Business timezone (from dayAndTime tool)
 
-**Best Practice:** Only include `{{dayAndTime}}` and `{{timezone}}` in nodes that call scheduling functions or need temporal context. Avoid including them in general conversation, routing, confirmation, or closing nodes to reduce token usage and prompt complexity.
+**Best Practice:** Only include `{{dayAndTime}}` and `{{timezone}}` in nodes that call scheduling
+functions or need temporal context. Avoid including them in general conversation, routing,
+confirmation, or closing nodes to reduce token usage and prompt complexity.
 
 ## Webhook URL Patterns
 
 All tools follow this webhook structure:
+
 ```
 https://{{base_webhook_url}}/webhook/{{toolName}}
 ```
 
 Configured per tool in config.json:
+
 ```json
 {
   "webhooks": {
@@ -142,4 +162,5 @@ Configured per tool in config.json:
 - `src/*.json` - Retell agent and n8n workflow configurations
 - `.github/copilot-prompts/` - Detailed prompt documentation
 
-When responding to slash commands, always consider the full template system architecture and maintain consistency across all components.
+When responding to slash commands, always consider the full template system architecture and
+maintain consistency across all components.
