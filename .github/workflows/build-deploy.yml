@@ -51,16 +51,16 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: layer7-ai-voice-dist
-          path: dist/
-          retention-days: 30
+            name: ${{ github.repository }}-dist
+            path: dist/
+            retention-days: 30
 
       - name: Create release archive
         if: github.ref == 'refs/heads/main'
         run: |
-          cd dist
-          tar -czf ../layer7-ai-voice-optimized.tar.gz *
-          cd ..
+            cd dist
+            tar -czf ../${{ github.repository }}-optimized.tar.gz *
+            cd ..
 
       - name: Get version from package.json
         if: github.ref == 'refs/heads/main'
@@ -94,51 +94,23 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: "AI Voice Receptionist Template v${{ steps.version.outputs.package_version }}"
-          body: |
-            # AI Voice Receptionist Template v${{ steps.version.outputs.package_version }}
-            
-            **Build Statistics:**
-            - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
-            - 📦 **Size Reduction**: ${{ steps.build_info.outputs.size_reduction }} (${{ steps.build_info.outputs.original_size }} → ${{ steps.build_info.outputs.processed_size }})
-            - ⚡ **Build Time**: ${{ steps.build_info.outputs.build_time }}
-            - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
-            - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
-
-            ## 🚀 What's New
-            
-            This optimized template includes:
-            - **Retell.ai Agent**: Complete conversation flow configuration
-            - **Security Prompts**: PII-protected system instructions  
-            - **n8n Workflows**: Full automation suite (booking, Q&A, lead capture)
-            - **Template System**: Dynamic variable replacement for client customization
-            - **GitHub Copilot**: Custom slash commands for development
-
-            ## 📥 Quick Start
-
-            ```bash
-            # Download and extract
-            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/layer7-ai-voice-optimized.tar.gz
-            tar -xzf layer7-ai-voice-optimized.tar.gz
-            
-            # Customize for your client
-            # Edit template variables in JSON files
-            # Deploy to Retell.ai and n8n platforms
-            ```
-
-            ## 🔧 Template Variables
-
-            Customize these in your deployment:
-            - `{{business_name}}` - Client business name
-            - `{{ai_support_hours}}` - Support availability hours
-            - N8N webhook URLs for your instance
-          files: |
-            layer7-ai-voice-optimized.tar.gz
-          draft: false
-          prerelease: false
-          make_latest: true
-          generate_release_notes: false
+              tag_name: ${{ steps.version.outputs.version }}
+              name: "${{ github.repository }} v${{ steps.version.outputs.package_version }}"
+              body: |
+                # ${{ github.repository }} v${{ steps.version.outputs.package_version }}
+              
+                **Build Information:**
+                - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
+                - 📦 **Size Reduction**: ${{ steps.build_info.outputs.size_reduction }} (${{ steps.build_info.outputs.original_size }} → ${{ steps.build_info.outputs.processed_size }})
+                - ⚡ **Build Time**: ${{ steps.build_info.outputs.build_time }}
+                - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
+                - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+              files: |
+                ${{ github.repository }}-optimized.tar.gz
+              draft: false
+              prerelease: false
+              make_latest: true
+              generate_release_notes: false
 
       - name: Build Status Summary
         run: |

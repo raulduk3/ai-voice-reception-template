@@ -1,4 +1,4 @@
-# 🤖 Retell Agent Conversation Flow Editing
+# Retell Agent Conversation Flow Editing
 
 ## Purpose
 Use this prompt with GitHub Copilot to modify Retell agent conversation flows and conversation node instructions while maintaining consistency and best practices.

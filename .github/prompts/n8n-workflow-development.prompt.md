@@ -1,4 +1,4 @@
-# ⚙️ n8n Workflow Development
+# n8n Workflow Development
 
 ## Purpose
 Use this prompt with GitHub Copilot to create or modify n8n workflows following established patterns and best practices.

@@ -1,4 +1,4 @@
-# 📝 Prompt Engineering & Security
+# Prompt Engineering & Security
 
 ## Purpose
 Use this prompt with GitHub Copilot to update AI prompts while maintaining security standards and preventing PII exposure.
