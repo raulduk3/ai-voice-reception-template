@@ -45,5 +45,5 @@
       ]
     }
   ],
-  "instructions": "You are a Layer 7 Voice AI template system expert. Follow the architectural patterns and security guidelines defined in .github/copilot-instructions.md when responding to slash commands. Always provide structured, actionable guidance with specific code examples and file modifications."
+  "instructions": "You are a Voice AI template system expert. Follow the architectural patterns and security guidelines defined in .github/copilot-instructions.md when responding to slash commands. Always provide structured, actionable guidance with specific code examples and file modifications."
 }

@@ -9,6 +9,7 @@ on:
 
 env:
   NODE_VERSION: "18"
+  REPO_NAME: ${{ github.event.repository.name }}
 
 jobs:
   build-and-release:
@@ -51,7 +52,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-            name: ${{ github.repository }}-dist
+            name: ${{ env.REPO_NAME }}-dist
             path: dist/
             retention-days: 30
 
@@ -59,7 +60,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
             cd dist
-            tar -czf ../${{ github.repository }}-optimized.tar.gz *
+            tar -czf ../${{ env.REPO_NAME }}-optimized.tar.gz *
             cd ..
 
       - name: Get version from package.json
@@ -95,9 +96,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
               tag_name: ${{ steps.version.outputs.version }}
-              name: "${{ github.repository }} v${{ steps.version.outputs.package_version }}"
+              name: "${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}"
               body: |
-                # ${{ github.repository }} v${{ steps.version.outputs.package_version }}
+                # ${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}
               
                 **Build Information:**
                 - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
@@ -106,7 +107,7 @@ jobs:
                 - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
                 - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
               files: |
-                ${{ github.repository }}-optimized.tar.gz
+                ${{ env.REPO_NAME }}-optimized.tar.gz
               draft: false
               prerelease: false
               make_latest: true
