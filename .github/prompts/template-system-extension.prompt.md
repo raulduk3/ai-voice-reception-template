@@ -40,7 +40,7 @@ TEMPLATE PROCESSING TARGETS:
 1. Replace `[EXTENSION REQUEST]` with your specific functionality addition
 2. Consider which configuration files need templating
 3. Plan backward compatibility for existing client deployments
-4. Include proper documentation updates in your request
+4. Include proper documentation updates in your request, opt to add to existing README before creating a new
 
 ## Extension Patterns
 
@@ -131,5 +131,4 @@ Follow these patterns when extending config.json:
 - Always provide default values for new configuration options
 - Use optional chaining for new config sections
 - Maintain existing template variable names
-- Document migration steps for existing clients
 - Test with legacy configuration files

@@ -1,0 +1,1326 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate appointment data from webhook body with enhanced service properties\nconst body = $input.first().json.body;\n\n// Validate required base fields\nconst required = ['name', 'date', 'time', 'phone', 'preferred_contact_method', 'service', 'timezone', 'email'];\nconst missing = required.filter(f => !body[f]);\n\nif (missing.length > 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Missing required fields: ${missing.join(', ')}`,\n      data: {\n        missing_fields: missing,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Validate email format\nif (!body.email || body.email.trim() === '') {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Email is required',\n      data: {\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (!emailRegex.test(body.email)) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Invalid email format',\n      data: {\n        provided_email: body.email,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Validate preferred_contact_method enum\nconst validContactMethods = ['phone', 'email', 'text'];\nif (!validContactMethods.includes(body.preferred_contact_method.toLowerCase())) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Invalid preferred_contact_method. Must be one of: ${validContactMethods.join(', ')}`,\n      data: {\n        provided_method: body.preferred_contact_method,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Validate date format (YYYY-MM-DD)\nif (!/^\\d{4}-\\d{2}-\\d{2}$/.test(body.date)) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Invalid date format. Expected YYYY-MM-DD',\n      data: {\n        provided_date: body.date,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Validate time format (HH:MM)\nif (!/^\\d{2}:\\d{2}$/.test(body.time)) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Invalid time format. Expected HH:MM',\n      data: {\n        provided_time: body.time,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Validate timezone format (basic check for IANA timezone)\nif (!body.timezone || body.timezone.length < 3) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Invalid or missing timezone',\n      data: {\n        provided_timezone: body.timezone,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Pass all data for service property parsing in next node\nreturn [{ json: body }];"
+      },
+      "id": "5430e8ad-a430-4248-b481-21c992300931",
+      "name": "Validate & Extract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dynamic service property parsing for enhanced booking schema\nconst body = $input.first().json;\n\n// Extract selected service from service object\nconst serviceObj = body.service;\nlet selectedService = Object.keys(serviceObj).find(key => serviceObj[key] === true);\n\nif (!selectedService) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No service selected',\n      data: {\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Service configuration mapping (slug -> display name)\nconst serviceMapping = {\n  'consultation': 'Consultation',\n  'follow-up': 'Follow-Up',\n  'bathroom-remodeling-consultation': 'Bathroom Remodeling Consultation'\n};\n\n// Get service display name\nconst serviceDisplayName = serviceMapping[selectedService] || selectedService.replaceAll('-', ' ');\n\n// Extract service properties for the selected service\nconst serviceProperties = body.service_properties && body.service_properties[selectedService] ? body.service_properties[selectedService] : {};\n\n// Define required properties per service (from config)\nconst requiredProperties = {\n  'consultation': ['project_type', 'budget_range'],\n  'follow-up': ['previous_project'],\n  'bathroom-remodeling-consultation': ['location', 'budget', 'budget_grade']\n};\n\n// Validate required service properties\nconst requiredForService = requiredProperties[selectedService] || [];\nconst missingServiceProps = requiredForService.filter(prop => !serviceProperties[prop]);\n\nif (missingServiceProps.length > 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Missing required service properties for ${serviceDisplayName}: ${missingServiceProps.join(', ')}`,\n      data: {\n        service: selectedService,\n        missing_service_properties: missingServiceProps,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Build final appointment data with parsed service info\nconst appointmentData = {\n  // Base appointment fields\n  name: body.name,\n  date: body.date,\n  time: body.time,\n  phone: body.phone,\n  email: body.email,\n  preferred_contact_method: body.preferred_contact_method,\n  timezone: body.timezone,\n  notes: body.notes || '',\n  \n  // Service information\n  service: serviceDisplayName,\n  service_slug: selectedService,\n  service_properties: serviceProperties,\n  \n  // Flatten service properties for easy access\n  ...serviceProperties\n};\n\nreturn [{ json: appointmentData }];"
+      },
+      "id": "75a462f8-4149-4f0d-9529-1a169d441181",
+      "name": "Parse Service Properties",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2140,
+        -75
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "893f9776-0ae6-4423-84ed-ca5722c62db3",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        940,
+        -175
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bookAppointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2580,
+        150
+      ],
+      "id": "f4f3b76e-c982-4ddb-9612-bd66d844df81",
+      "name": "Webhook",
+      "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2146247729,
+          "mode": "list",
+          "cachedResultName": "Service Types",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit#gid=2146247729"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -2360,
+        450
+      ],
+      "id": "64ff6421-1669-484d-a735-b3923313b9e3",
+      "name": "Get Services",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle system errors from Google Calendar or Sheets APIs\nconst inputItem = $input.first();\nconst inputData = inputItem.json || {};\nconst errorInfo = inputData.error || null;\n\n// Check if this is actually an error\nif (errorInfo !== null) {\n  // Check if this is success data that shouldn't be here\n  // If we got here, it's unclear what happened - create generic error\n  return [{\n    json: {\n      status: 'error',\n      message: 'An unexpected error occurred during booking.',\n      data: {\n        error_type: 'UNKNOWN_ERROR',\n        error_name: 'UnexpectedError',\n        timestamp: new Date().toISOString(),\n        retry_possible: true,\n        technical_details: {\n          note: 'Error handler triggered without error details',\n          input_data: inputData\n        }\n      }\n    }\n  }];\n} else \n{\n   return [];\n}\n\n// Format proper error response with actual error information\nreturn [{\n  json: {\n    status: 'error',\n    message: errorInfo.message || 'A system error occurred while booking the appointment.',\n    data: {\n      error_type: errorInfo.code || 'BOOKING_ERROR',\n      error_name: errorInfo.name || 'SystemError',\n      timestamp: new Date().toISOString(),\n      retry_possible: true,\n      technical_details: {\n        error_message: errorInfo.message,\n        error_stack: errorInfo.stack,\n        node_name: errorInfo.node?.name,\n        error_code: errorInfo.code,\n        http_code: errorInfo.httpCode\n      }\n    }\n  }\n}];"
+      },
+      "id": "ffe9d204-613c-41dc-b8a4-5430e5de3fa7",
+      "name": "Handle System Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        -600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (data.status === 'failure') return [{ json: data }];\nreturn [];"
+      },
+      "id": "2e4612b9-dfd1-4d42-8566-0bd11e45642c",
+      "name": "Handle Validation Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1920,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "e723ba55f4fb883a9085a4aa46f5b4ce96291855055f41c5e392533f6f1cfd07@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction"
+        },
+        "timeMin": "={{ $json.start_datetime }}",
+        "timeMax": "={{ $json.end_datetime }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -1260,
+        -50
+      ],
+      "id": "8bd4bf2a-2560-49e8-8058-3f09d90e079d",
+      "name": "Get Slot Availability",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -1040,
+        -300
+      ],
+      "id": "9b57a606-5c8c-46e2-a036-be02a2231574",
+      "name": "Merge Booking with Availability"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "82d7f00a-6a05-456c-b858-c3896fc53fb8",
+              "leftValue": "={{ $json.available }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -820,
+        -300
+      ],
+      "id": "45b078d7-2e1e-4c42-ba20-21fcdee29358",
+      "name": "Disallow Double-Booking?"
+    },
+    {
+      "parameters": {
+        "jsCode": "\n\nreturn {\n  status: 'failure',\n  message: 'Appointment time already taken.',\n  data: $input.first().json\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -150
+      ],
+      "id": "ce762eae-9531-45f0-9c57-6aed499a46e2",
+      "name": "Format Booking Slot Occupied"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "e723ba55f4fb883a9085a4aa46f5b4ce96291855055f41c5e392533f6f1cfd07@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction"
+        },
+        "start": "={{ $json.start_datetime }}",
+        "end": "={{ $json.end_datetime }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $json.email }}"
+          ],
+          "description": "={{ $json.calendar_description }}",
+          "location": "={{ $json.location || '' }}",
+          "sendUpdates": "all",
+          "summary": "={{ $json.service }} for {{ $json.name }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -600,
+        -600
+      ],
+      "id": "d46557fa-6e32-43ce-9f1c-b830867a0717",
+      "name": "Create Google Calendar Event",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -380,
+        -425
+      ],
+      "id": "f7c07097-12db-43f0-8790-01a9437255f8",
+      "name": "Merge GCal Event and Booking Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final data for Google Sheets with calendar event ID\nconst bookingData = $input.first().json;\nconst calendarEvent = $input.last().json;\n\n// Update CSV data with Google Calendar Event ID and Modified timestamp\nconst updatedCsvData = {\n  ...bookingData.csv_data,\n  'Google Calendar Event ID': calendarEvent.id || '',\n  'Modified': new Date().toISOString() // Update modification timestamp\n};\n\n// Return merged data ready for Google Sheets\nreturn [{\n  json: {\n    ...bookingData,\n    ...calendarEvent,\n    csv_data: updatedCsvData\n  }\n}];"
+      },
+      "id": "819d60d0-5f78-435f-9c39-60b1ce6b305d",
+      "name": "Format for Google Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -425
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1591525957,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit#gid=1591525957"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Preferred Contact Method",
+              "displayName": "Preferred Contact Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duration",
+              "displayName": "Duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Google Calendar Event ID",
+              "displayName": "Google Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Modified",
+              "displayName": "Modified",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Consultation: Budget Range",
+              "displayName": "Consultation: Budget Range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Consultation: Project Type",
+              "displayName": "Consultation: Project Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Consultation: Timeline Weeks",
+              "displayName": "Consultation: Timeline Weeks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-Up: Previous Project",
+              "displayName": "Follow-Up: Previous Project",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "start",
+              "displayName": "start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end",
+              "displayName": "end",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "attendees",
+              "displayName": "attendees",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "creator",
+              "displayName": "creator",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "organizer",
+              "displayName": "organizer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "description",
+              "displayName": "description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created",
+              "displayName": "created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "updated",
+              "displayName": "updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "etag",
+              "displayName": "etag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "eventType",
+              "displayName": "eventType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "htmlLink",
+              "displayName": "htmlLink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "iCalUID",
+              "displayName": "iCalUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "kind",
+              "displayName": "kind",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reminders",
+              "displayName": "reminders",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sequence",
+              "displayName": "sequence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "time",
+              "displayName": "time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "preferred_contact_method",
+              "displayName": "preferred_contact_method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timezone",
+              "displayName": "timezone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "service_slug",
+              "displayName": "service_slug",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "service_properties",
+              "displayName": "service_properties",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "project_type",
+              "displayName": "project_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "budget_range",
+              "displayName": "budget_range",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "csv_data",
+              "displayName": "csv_data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "calendar_description",
+              "displayName": "calendar_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "duration",
+              "displayName": "duration",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "start_datetime",
+              "displayName": "start_datetime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end_datetime",
+              "displayName": "end_datetime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end_date",
+              "displayName": "end_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "end_time",
+              "displayName": "end_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "available",
+              "displayName": "available",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        280,
+        -475
+      ],
+      "id": "0f5ab5fe-79e5-4f42-b671-629b3475eb43",
+      "name": "Insert New Appointment",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate booking duration and create timezone-aware datetime strings for Google Calendar API\nconst booking = $input.first().json;\n\n// Pass through failure status\nif (booking.status === 'failure') {\n  return [{ json: booking }];\n}\n\nconst durationMinutes = booking.duration;\nconst timezone = booking.timezone; // IANA timezone (e.g., \"America/Chicago\")\n\n// Parse start time components from the booking time string (HH:MM format)\nconst [startHours, startMinutes] = booking.time.split(':').map(Number);\n\n// Calculate end time using pure arithmetic (avoids JavaScript Date timezone conversion)\n// This keeps calculations in the LOCAL timezone specified by the caller\nlet totalMinutes = startHours * 60 + startMinutes + durationMinutes;\nconst daysToAdd = Math.floor(totalMinutes / (24 * 60)); // Handle day overflow\nconst endHours = Math.floor(totalMinutes / 60) % 24;\nconst endMinutes = totalMinutes % 60;\n\n// Format end time\nconst endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;\n\n// Calculate end date (handle appointments that cross midnight)\nlet endDate = booking.date;\nif (daysToAdd > 0) {\n  const startDateObj = new Date(booking.date + 'T00:00:00');\n  startDateObj.setDate(startDateObj.getDate() + daysToAdd);\n  endDate = startDateObj.toISOString().split('T')[0];\n}\n\n// Helper function to convert local datetime + timezone → RFC3339 format\nfunction toRFC3339(dateTimeString, timeZone) {\n  // Create a date object from the local datetime string\n  const localDateTime = new Date(dateTimeString);\n  if (isNaN(localDateTime.getTime())) {\n    throw new Error(`Invalid datetime string: ${dateTimeString}`);\n  }\n\n  // Use Intl.DateTimeFormat to get timezone offset for the specific date\n  const formatter = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false\n  });\n\n  const parts = formatter.formatToParts(localDateTime);\n  const getValue = (type) => parseInt(parts.find(p => p.type === type).value, 10);\n  \n  // Create a date in the target timezone\n  const targetDate = new Date(Date.UTC(\n    getValue('year'),\n    getValue('month') - 1,\n    getValue('day'),\n    getValue('hour'),\n    getValue('minute'),\n    getValue('second')\n  ));\n\n  // Calculate the offset in minutes\n  const offsetMinutes = (targetDate.getTime() - localDateTime.getTime()) / 60000;\n  const sign = offsetMinutes <= 0 ? '-' : '+';\n  const absOffset = Math.abs(offsetMinutes);\n  const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');\n  const offsetMins = String(absOffset % 60).padStart(2, '0');\n  const offset = `${sign}${offsetHours}:${offsetMins}`;\n\n  // Format the final RFC3339 string\n  const [date, time] = dateTimeString.split('T');\n  const timePart = time && time.split(':').length === 2 ? `${time}:00` : time;\n  return `${date}T${timePart}${offset}`;\n}\n\n// Create timezone-aware datetime strings in RFC3339 format for Google Calendar API\nconst startDatetimeString = `${booking.date}T${booking.time}:00`;\nconst endDatetimeString = `${endDate}T${endTime}:00`;\n\n// Convert to RFC3339 format with timezone offset\nconst startRFC3339 = toRFC3339(startDatetimeString, timezone);\nconst endRFC3339 = toRFC3339(endDatetimeString, timezone);\n\nreturn [{\n  json: {\n    ...booking,\n    start_datetime: startRFC3339,\n    end_datetime: endRFC3339,\n    end_date: endDate,\n    end_time: endTime\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1480,
+        -125
+      ],
+      "id": "e9833486-bfb3-4ea2-8305-888d1d7f391e",
+      "name": "Calculate Booking Duration and Datetime"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "service",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -1920,
+        -125
+      ],
+      "id": "d31fcc45-00d4-4162-9813-3a7c5d0fc3fc",
+      "name": "Merge Service with Booking Details"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Pass through failure status\nif (data.status === 'failure') return [{ json: data }];\n\nreturn [{\n  json: {\n    status: 'success',\n    message: \"Booked appointment.\",\n    data: data\n  }\n}];"
+      },
+      "id": "7fd66670-2d90-4db4-96ba-0b5e6f4f04b1",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -350
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        500,
+        -350
+      ],
+      "id": "bc4bc9f8-f003-4dc9-9938-6898be3d5744",
+      "name": "Merge Sheet Data with Booking"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle system errors from Google Calendar or Sheets APIs\nconst inputItem = $input.first();\nconst inputData = inputItem.json || {};\nconst errorInfo = inputData.error || null;\n\n// Check if this is actually an error\nif (errorInfo !== null) {\n  // Check if this is success data that shouldn't be here\n  // If we got here, it's unclear what happened - create generic error\n  return [{\n    json: {\n      status: 'error',\n      message: 'An unexpected error occurred during booking.',\n      data: {\n        error_type: 'UNKNOWN_ERROR',\n        error_name: 'UnexpectedError',\n        timestamp: new Date().toISOString(),\n        retry_possible: true,\n        technical_details: {\n          note: 'Error handler triggered without error details',\n          input_data: inputData\n        }\n      }\n    }\n  }];\n} else \n{\n   return [];\n}\n\n// Format proper error response with actual error information\nreturn [{\n  json: {\n    status: 'error',\n    message: errorInfo.message || 'A system error occurred while booking the appointment.',\n    data: {\n      error_type: errorInfo.code || 'BOOKING_ERROR',\n      error_name: errorInfo.name || 'SystemError',\n      timestamp: new Date().toISOString(),\n      retry_possible: true,\n      technical_details: {\n        error_message: errorInfo.message,\n        error_stack: errorInfo.stack,\n        node_name: errorInfo.node?.name,\n        error_code: errorInfo.code,\n        http_code: errorInfo.httpCode\n      }\n    }\n  }\n}];"
+      },
+      "id": "bf270ea6-79ca-4769-a58a-3f3114d32387",
+      "name": "Handle System Error 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let out = [];\n\nfor (const item of $input.all()) {\n  out.push({\n    service: item.json[\"Service Type\"],\n    duration: item.json[\"Duration (minutes)\"]\n  });\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2140,
+        525
+      ],
+      "id": "7337da52-78bf-4468-9a40-57fefc2d3d66",
+      "name": "Format Services"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.csv_data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -475
+      ],
+      "id": "c7cfd23b-ce49-4073-a34f-284ff4d4517c",
+      "name": "Extract CSV"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Map service properties to CSV format with proper column naming\nconst data = $input.first().json;\n\n// Get current timestamp for audit fields\nconst currentTimestamp = new Date().toISOString();\n\n// Base CSV columns matching generated schema\nconst csvData = {\n  'Name': data.name,\n  'Phone': data.phone,\n  'Email': data.email,\n  'Preferred Contact Method': data.preferred_contact_method,\n  'Date': data.date,\n  'Time': data.time,\n  'Service': data.service,\n  'Duration': data.duration || '',\n  'Status': 'Confirmed',\n  'Notes': data.notes || '',\n  'Google Calendar Event ID': '', // Will be updated after calendar creation\n  'Created': currentTimestamp,\n  'Modified': currentTimestamp\n};\n\n// Service property column mapping (slug -> proper column names) - matches config.json services\nconst columnMapping = {\n  'consultation': {\n    'project_type': 'Consultation: Project Type',\n    'budget_range': 'Consultation: Budget Range',\n    'timeline_weeks': 'Consultation: Timeline Weeks'\n  },\n  'follow-up': {\n    'previous_project': 'Follow-Up: Previous Project'\n  }\n};\n\n// Add service-specific properties to CSV data\nif (data.service_slug && data.service_properties && columnMapping[data.service_slug]) {\n  const serviceColumns = columnMapping[data.service_slug];\n  \n  Object.keys(serviceColumns).forEach(propKey => {\n    const columnName = serviceColumns[propKey];\n    const value = data.service_properties[propKey];\n    csvData[columnName] = value !== undefined ? value : '';\n  });\n}\n\n// Create Google Calendar event description with service properties\nlet description = `Service: ${data.service}\\n`;\nif (data.service_properties && Object.keys(data.service_properties).length > 0) {\n  description += '\\nService Details:\\n';\n  Object.keys(data.service_properties).forEach(key => {\n    const value = data.service_properties[key];\n    if (value !== undefined && value !== '') {\n      const displayKey = key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n      description += `${displayKey}: ${value}\\n`;\n    }\n  });\n}\nif (data.notes) {\n  description += `\\nNotes: ${data.notes}`;\n}\n\n// Add customer information to description\ndescription += `\\n--\\n\\nCustomer: ${data.name}\\nPreferred Contact: ${data.preferred_contact_method}\\nPhone: ${data.phone}\\nEmail: ${data.email}`;\n\n// Return enhanced appointment data with CSV mapping and calendar description\nreturn [{\n  json: {\n    ...data,\n    csv_data: csvData,\n    calendar_description: description\n  }\n}];"
+      },
+      "id": "7ad69052-82f1-4179-8df2-7f055d9df1fd",
+      "name": "Map to CSV Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1700,
+        -125
+      ]
+    }
+  ],
+  "connections": {
+    "Validate & Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Parse Service Properties",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Service Properties": {
+      "main": [
+        [
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Service with Booking Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Extract Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Services": {
+      "main": [
+        [
+          {
+            "node": "Handle System Error 2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Services",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle System Error": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Validation Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Slot Availability": {
+      "main": [
+        [
+          {
+            "node": "Merge Booking with Availability",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Handle System Error 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Booking with Availability": {
+      "main": [
+        [
+          {
+            "node": "Disallow Double-Booking?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Disallow Double-Booking?": {
+      "main": [
+        [
+          {
+            "node": "Create Google Calendar Event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge GCal Event and Booking Data",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Format Booking Slot Occupied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Booking Slot Occupied": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge GCal Event and Booking Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge GCal Event and Booking Data": {
+      "main": [
+        [
+          {
+            "node": "Format for Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format for Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Merge Sheet Data with Booking",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Extract CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert New Appointment": {
+      "main": [
+        [
+          {
+            "node": "Merge Sheet Data with Booking",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Booking Duration and Datetime": {
+      "main": [
+        [
+          {
+            "node": "Get Slot Availability",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Booking with Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Service with Booking Details": {
+      "main": [
+        [
+          {
+            "node": "Map to CSV Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Sheet Data with Booking": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle System Error 2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Services": {
+      "main": [
+        [
+          {
+            "node": "Merge Service with Booking Details",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Extract CSV": {
+      "main": [
+        [
+          {
+            "node": "Insert New Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map to CSV Format": {
+      "main": [
+        [
+          {
+            "node": "Calculate Booking Duration and Datetime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n.srv836523.hstgr.cloud",
+          "user-agent": "axios/1.11.0",
+          "content-length": "378",
+          "accept": "application/json, text/plain, */*",
+          "accept-encoding": "gzip, compress, deflate, br",
+          "content-type": "application/json",
+          "x-forwarded-for": "100.20.5.228",
+          "x-forwarded-host": "n8n.srv836523.hstgr.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "88373cf48b91",
+          "x-real-ip": "100.20.5.228",
+          "x-retell-signature": "v=1761074912236,d=0db50b415a33e48dec2389dac5a576977f5e3a2923446e36a510567e966da51a"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "name": "Alex Kim",
+          "phone": "5551112222",
+          "email": "alex.kim@example.com",
+          "preferred_contact_method": "email",
+          "date": "2025-10-28",
+          "time": "15:00",
+          "timezone": "America/Chicago",
+          "service": {
+            "consultation": true,
+            "follow-up": false
+          },
+          "service_properties": {
+            "consultation": {
+              "project_type": "web development",
+              "budget_range": "mid-range"
+            }
+          },
+          "notes": "Customer has allergies to note for consultation"
+        },
+        "webhookUrl": "https://n8n.srv836523.hstgr.cloud/webhook/bookAppointment",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  }
+}
