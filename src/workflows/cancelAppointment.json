@@ -1,0 +1,598 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cancelAppointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        -290
+      ],
+      "id": "86257671-447d-4dbf-871c-18fbd60e698b",
+      "name": "Webhook",
+      "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate cancellation data from webhook body\nconst body = $input.first().json.body;\n\n// Validate required field (appointment_id)\nif (!body.appointment_id) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Missing required field: appointment_id',\n      data: {\n        missing_fields: ['appointment_id'],\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Prepare cancellation data\nreturn [{\n  json: {\n    appointment_id: body.appointment_id,\n    reason: body.reason || '',\n    notes: body.notes || '',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "f0e20801-12e5-4ce8-a5bb-13d1517e238e",
+      "name": "Validate & Extract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -290
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "e723ba55f4fb883a9085a4aa46f5b4ce96291855055f41c5e392533f6f1cfd07@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction"
+        },
+        "eventId": "={{ $json.appointment_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        140,
+        -540
+      ],
+      "id": "ba66d268-32e3-4d7e-91e8-690e6e7086a9",
+      "name": "Delete Calendar Event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "hoMR3q3gb9pxlxTs",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format success response\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Appointment canceled successfully.',\n    data: {\n      appointment_id: data.appointment_id,\n      canceled_at: new Date().toISOString(),\n      reason: data.reason || 'No reason provided'\n    }\n  }\n}];"
+      },
+      "id": "d86b6a28-3bdc-4eba-be2a-26c4c673bdf8",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle validation failures\nconst data = $input.first().json;\n\nif (data.status === 'failure') {\n  return [{ json: data }];\n}\n\nreturn [];"
+      },
+      "id": "2f242fff-d529-4200-b075-1fd7a54ed658",
+      "name": "Handle Validation Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle system errors\nconst error = $input.first().json.error || {};\n\nif(!error)\n{\n  return [];\n}\n\nreturn [{\n  json: {\n    status: 'error',\n    message: error.message || 'A system error occurred while canceling the appointment.',\n    data: {\n      error_type: error.code || 'CANCEL_ERROR',\n      timestamp: new Date().toISOString(),\n      retry_possible: true\n    }\n  }\n}];"
+      },
+      "id": "b83b0568-ec8b-461a-97a3-61e133cb0180",
+      "name": "Handle System Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -490
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "f174172c-d465-4959-a599-407626182b11",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1591525957,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit#gid=1591525957"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Google Calendar Event ID": "=CANCELED",
+            "Date": "CANCELED",
+            "Time": "={{ $json.Time }}",
+            "Location": "CANCELED",
+            "Notes": "CANCELED"
+          },
+          "matchingColumns": [
+            "Time"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Preferred Contact Method",
+              "displayName": "Preferred Contact Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget Grade",
+              "displayName": "Budget Grade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Google Calendar Event ID",
+              "displayName": "Google Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        360,
+        -240
+      ],
+      "id": "403ab84b-1719-457a-9917-fc868119f80f",
+      "name": "Remove Calendar ID",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1591525957,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit#gid=1591525957"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Google Calendar Event ID": "={{ $json.appointment_id }}",
+            "Date": "CANCELED",
+            "Time": "=CANCELED at {{ $json.timestamp }}",
+            "Location": "CANCELED",
+            "Notes": "CANCELED"
+          },
+          "matchingColumns": [
+            "Google Calendar Event ID"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Preferred Contact Method",
+              "displayName": "Preferred Contact Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Service",
+              "displayName": "Service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Location",
+              "displayName": "Location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget Grade",
+              "displayName": "Budget Grade",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Google Calendar Event ID",
+              "displayName": "Google Calendar Event ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        140,
+        -290
+      ],
+      "id": "2a8d3dc1-a560-4343-a514-02556235c42f",
+      "name": "Cancel Appointment",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Delete Calendar Event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Cancel Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Validation Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle System Error": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Calendar ID": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Appointment": {
+      "main": [
+        [
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remove Calendar ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n.srv836523.hstgr.cloud",
+          "user-agent": "axios/1.11.0",
+          "content-length": "61",
+          "accept": "application/json, text/plain, */*",
+          "accept-encoding": "gzip, compress, deflate, br",
+          "content-type": "application/json",
+          "x-forwarded-for": "100.20.5.228",
+          "x-forwarded-host": "n8n.srv836523.hstgr.cloud",
+          "x-forwarded-port": "443",
+          "x-forwarded-proto": "https",
+          "x-forwarded-server": "88373cf48b91",
+          "x-real-ip": "100.20.5.228",
+          "x-retell-signature": "v=1760557436559,d=b50b3c59714ea855d8ed0fb8be8accbe2d9d2fad47069748cc7e9155d21bee39"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "appointment_id": "ms60nqn64k5k7kihf0ot3ns6ck",
+          "reason": null
+        },
+        "webhookUrl": "https://n8n.srv836523.hstgr.cloud/webhook/cancelAppointment",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  }
+}

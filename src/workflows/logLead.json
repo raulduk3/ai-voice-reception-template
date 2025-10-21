@@ -1,5 +1,4 @@
 {
-  "name": "logLead",
   "nodes": [
     {
       "parameters": {
@@ -8,55 +7,62 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "ad0843fe-2e3e-4895-ae56-caea8d24f4e8",
+      "id": "c70862ba-c0d0-4c0a-a8b4-d594e9f6c62a",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-200, 0],
+      "position": [
+        -200,
+        400
+      ],
       "webhookId": "371606d2-f5b2-462a-814a-ce26a428f966"
     },
     {
       "parameters": {
-        "jsCode": "// Extract and validate lead data from webhook body\nconst body = $input.first().json.body;\n\n// Validate required fields\nconst required = ['name', 'phone'];\nconst missing = required.filter(f => !body[f]);\n\nif (missing.length > 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Missing required fields: ${missing.join(', ')}`,\n      data: {\n        missing_fields: missing,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Prepare data for insertion\nreturn [{\n  json: {\n    name: body.name || '',\n    phone: body.phone || '',\n    email: body.email || '',\n    service_interest: body.service_interest || '',\n    notes: body.notes || '',\n    timestamp: body.timestamp || new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Extract and validate lead data from webhook body\nconst body = $input.first().json.body;\n\n// Validate required fields\nconst required = ['name', 'phone', 'email'];\nconst missing = required.filter(f => !body[f]);\n\nif (missing.length > 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Missing required fields: ${missing.join(', ')}`,\n      data: {\n        missing_fields: missing,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Prepare data for insertion\nreturn [{\n  json: {\n    name: body.name || '',\n    phone: body.phone || '',\n    email: body.email || '',\n    service_interest: body.service_interest || '',\n    notes: body.notes || '',\n    timestamp: body.timestamp || new Date().toISOString(),\n    ...body\n  }\n}];"
       },
-      "id": "80269e1f-e873-4d42-b69d-6d0c70824226",
+      "id": "a0ccfe29-04f3-4125-b56d-f39dc92103ca",
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [0, 0]
+      "position": [
+        20,
+        400
+      ]
     },
     {
       "parameters": {
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0",
+          "value": "1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE",
           "mode": "list",
-          "cachedResultName": "Fake CRM",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit?usp=drivesdk"
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit?usp=drivesdk"
         },
         "sheetName": {
           "__rl": true,
-          "value": "gid=0",
+          "value": 327101773,
           "mode": "list",
-          "cachedResultName": "Leads/Callbacks",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O3BVuQ_ceTCP5UbIg5Y-lFtWtkyhey_rp9cVAvMAOv0/edit#gid=0"
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit#gid=327101773"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "name": "={{ $json.name }}",
-            "phone": "={{ $json.phone }}",
-            "email": "={{ $json.email }}",
-            "service_interest": "={{ $json.service_interest }}",
-            "notes": "={{ $json.notes }}",
-            "timestamp": "={{ $json.timestamp }}"
+            "Name": "={{ $json.name }}",
+            "Phone": "={{ $json.phone }}",
+            "Email": "={{ $json.email }}",
+            "Preferred Contact Method": "={{ $json.preferred_contact_method }}",
+            "Notes": "={{ $json.service_interest }}\n{{ $json.notes }}",
+            "Timestamp": "={{ $json.timestamp }}",
+            "Status": "OPEN"
           },
           "matchingColumns": [],
           "schema": [
             {
-              "id": "name",
-              "displayName": "name",
+              "id": "Name",
+              "displayName": "Name",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -64,8 +70,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "phone",
-              "displayName": "phone",
+              "id": "Phone",
+              "displayName": "Phone",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -73,8 +79,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "email",
-              "displayName": "email",
+              "id": "Notes",
+              "displayName": "Notes",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -82,8 +88,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "service_interest",
-              "displayName": "service_interest",
+              "id": "Timestamp",
+              "displayName": "Timestamp",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -91,8 +97,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "notes",
-              "displayName": "notes",
+              "id": "Email",
+              "displayName": "Email",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -100,106 +106,102 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "timestamp",
-              "displayName": "timestamp",
+              "id": "Preferred Contact Method",
+              "displayName": "Preferred Contact Method",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
             }
-          ]
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
         },
-        "options": {}
+        "options": {
+          "useAppend": false
+        }
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [200, 0],
-      "id": "4d83da6e-d1dc-49da-a25c-1c0f9e86c800",
+      "position": [
+        240,
+        300
+      ],
+      "id": "499e025f-4ef4-4c12-bdbc-b08f4b36de02",
       "name": "Insert to Google Sheets",
+      "alwaysOutputData": true,
+      "executeOnce": true,
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "S8SEj6XfWzKC8Ohj",
           "name": "Google Sheets"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "jsCode": "// Format success response\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Lead logged successfully.',\n    data: {\n      name: data.name,\n      phone: data.phone,\n      email: data.email,\n      service_interest: data.service_interest,\n      notes: data.notes,\n      timestamp: data.timestamp\n    }\n  }\n}];"
       },
-      "id": "e8d1ad9d-5e4f-4186-9c3e-eb42e6ae407f",
+      "id": "06195d1b-c3fc-42c3-a458-eac767f696ba",
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 0]
+      "position": [
+        460,
+        200
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Handle validation failures (from Validate node)\nconst data = $input.first().json;\n\nif (data.status === 'failure') {\n  return [{ json: data }];\n}\n\nreturn [];"
       },
-      "id": "2e5acf07-0d3c-42dd-a091-079cc0d4941b",
+      "id": "1b95897e-d97f-4ce9-9102-aa7267339274",
       "name": "Handle Validation Failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [200, 200]
+      "position": [
+        460,
+        600
+      ]
     },
     {
       "parameters": {
         "jsCode": "// Handle system errors (from Google Sheets node)\nconst error = $input.first().json.error || {};\n\nreturn [{\n  json: {\n    status: 'error',\n    message: error.message || 'A system error occurred while logging the lead.',\n    data: {\n      error_type: error.code || 'LEAD_LOG_ERROR',\n      timestamp: new Date().toISOString(),\n      retry_possible: true\n    }\n  }\n}];"
       },
-      "id": "ce48bd43-3d71-4613-a15c-966f24cf62d5",
+      "id": "ee2c7776-64d2-49e9-ab48-23268c367e66",
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 200]
+      "position": [
+        460,
+        400
+      ]
     },
     {
       "parameters": {
         "options": {}
       },
-      "id": "118f83f8-8507-4507-8dd3-136809e0f41f",
+      "id": "50d3620d-465f-4243-a350-843f8d49dee1",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [600, 100]
+      "position": [
+        680,
+        400
+      ]
     }
   ],
-  "pinData": {
-    "Webhook": [
-      {
-        "json": {
-          "headers": {
-            "host": "n8n.srv836523.hstgr.cloud",
-            "user-agent": "axios/1.11.0",
-            "content-length": "323",
-            "accept": "application/json, text/plain, */*",
-            "accept-encoding": "gzip, compress, deflate, br",
-            "content-type": "application/json",
-            "x-forwarded-for": "100.20.5.228",
-            "x-forwarded-host": "n8n.srv836523.hstgr.cloud",
-            "x-forwarded-port": "443",
-            "x-forwarded-proto": "https",
-            "x-forwarded-server": "88373cf48b91",
-            "x-real-ip": "100.20.5.228",
-            "x-retell-signature": "v=1759980452279,d=5e0f64aaf85b6cc050317c97709214539cbc97395e935f646462f431dadda793"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "name": "Sam Stone",
-            "service_interest": "Haircut appointment - earliest available slot",
-            "notes": "Tried to book earliest available haircut appointment, but system error occurred. Caller requests a callback to complete scheduling.",
-            "phone": "7187891273",
-            "email": "samstone@gmail.com",
-            "timestamp": "2025-10-08T22:27:12.250-05:00"
-          },
-          "webhookUrl": "https://n8n.srv836523.hstgr.cloud/webhook/logLead",
-          "executionMode": "production"
-        }
-      }
-    ]
-  },
   "connections": {
     "Webhook": {
       "main": [
@@ -233,6 +235,11 @@
         [
           {
             "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle System Error",
             "type": "main",
             "index": 0
           }
@@ -273,16 +280,8 @@
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "errorWorkflow": "ce48bd43-3d71-4613-a15c-966f24cf62d5"
-  },
-  "versionId": "29bf341b-ffe0-445f-b056-10d85f6e5aad",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
-  },
-  "id": "ahIUCg31KnqDMELW",
-  "tags": []
+  }
 }

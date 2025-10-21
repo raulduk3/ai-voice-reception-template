@@ -1,0 +1,274 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "identifyAppointment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        -20
+      ],
+      "id": "ab986afe-7227-48b6-af07-2cc9b80ecd1d",
+      "name": "Webhook",
+      "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate appointment search data from webhook body\nconst body = $input.first().json.body;\n\n// Validate required fields (need at least name OR phone)\nif (!body.name && !body.phone) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'Either name or phone number is required to identify an appointment.',\n      data: {\n        missing_fields: ['name or phone'],\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Prepare search data\nreturn [{\n  json: {\n    name: body.name || '',\n    phone: body.phone || '',\n    date: body.date || null,\n    context: body.context || '',\n    query: body.query || '',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "c5709b95-32d8-4ac5-a316-62c4404527b9",
+      "name": "Validate & Extract Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE",
+          "mode": "list",
+          "cachedResultName": "Hinsdale High-End Bathroom Remodeling and Reconstruction",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1591525957,
+          "mode": "list",
+          "cachedResultName": "Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UgLqJzKgRzxgVTKEjKPEI7_pmrf9CGQhDct5UN86FzE/edit#gid=1591525957"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Name",
+              "lookupValue": "={{ $json.name }}"
+            },
+            {
+              "lookupColumn": "Phone",
+              "lookupValue": "={{ $json.phone }}"
+            }
+          ]
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -60,
+        160
+      ],
+      "id": "6149afdb-b976-419d-829c-877bbaa4f3c2",
+      "name": "Get Appointments from Sheet",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "S8SEj6XfWzKC8Ohj",
+          "name": "Google Sheets"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process matched appointments from Google Sheets\n// Input: Appended data with search criteria (first item) followed by exact-matched appointment records\nconst items = $input.all();\n\nif (items.length === 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No data received.',\n      data: {\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// First item is search data from validation\nconst searchData = items[0].json;\n\n// Remaining items are appointments from Google Sheets (already filtered by exact name/phone match)\nconst appointmentRecords = items.slice(1);\n\nif (appointmentRecords.length === 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No appointments found matching the provided information.',\n      data: {\n        search_criteria: searchData,\n        suggestions: 'Please verify the name, phone number, or date and try again.',\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Extract all matched appointments (Google Sheets already filtered by exact match)\nconst allAppointments = appointmentRecords.map(i => i.json);\n\n// Filter out canceled and past appointments\nconst appointments = allAppointments.filter(apt => {\n  // Drop canceled appointments (Date or Time fields contain \"CANCELED\")\n  if (apt.Date === 'CANCELED' || \n      (typeof apt.Time === 'string' && apt.Time.includes('CANCELED'))) {\n    return false;\n  }\n  \n  // Drop past appointments (compare date with today)\n  if (apt.Date) {\n    const today = new Date();\n    today.setHours(0, 0, 0, 0); // Set to midnight for date comparison\n    \n    // Parse appointment date (assuming YYYY-MM-DD format from sheets)\n    const appointmentDate = new Date(apt.Date);\n    if (!isNaN(appointmentDate.getTime())) {\n      appointmentDate.setHours(0, 0, 0, 0);\n      \n      // Drop if appointment date is before today\n      if (appointmentDate < today) {\n        return false;\n      }\n    }\n  }\n  \n  return true;\n});\n\n// Check if any active appointments remain after filtering\nif (appointments.length === 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No active future appointments found matching the provided information.',\n      data: {\n        search_criteria: searchData,\n        suggestions: 'All matching appointments are either canceled or in the past. Please check if you need to book a new appointment.',\n        total_found: allAppointments.length,\n        filtered_out: allAppointments.length,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Flatten to single item with all matching active appointments\nreturn [{ \n  json: { \n    ...searchData, \n    appointments: appointments, \n    total_matches: appointments.length,\n    total_found: allAppointments.length,\n    filtered_out: allAppointments.length - appointments.length\n  } \n}];"
+      },
+      "id": "106fad91-9857-463d-817c-bb6fae656959",
+      "name": "Format Matched Appointments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        -250
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\n// Pass through failure status\nif (data.status === 'failure') return [{ json: data }];\n\nconst apts = data.appointments;\nconst count = apts.length;\n\n// Format message based on number of matches\nlet message;\nif (count === 1) {\n  message = `Found 1 appointment for ${apts[0].Name} on ${apts[0].Date} at ${apts[0].Time}.`;\n} else {\n  message = `Found ${count} appointments matching your search.`;\n}\n\n// Service property column mapping (column names -> property keys)\nconst servicePropertyColumns = {\n  'Consultation: Project Type': { service: 'consultation', property: 'project_type' },\n  'Consultation: Budget Range': { service: 'consultation', property: 'budget_range' },\n  'Consultation: Timeline Weeks': { service: 'consultation', property: 'timeline_weeks' },\n  'Follow-Up: Previous Project': { service: 'follow-up', property: 'previous_project' },\n  'Bathroom Remodeling Consultation: Location': { service: 'bathroom-remodeling-consultation', property: 'location' },\n  'Bathroom Remodeling Consultation: Budget': { service: 'bathroom-remodeling-consultation', property: 'budget' },\n  'Bathroom Remodeling Consultation: Budget Grade': { service: 'bathroom-remodeling-consultation', property: 'budget_grade' },\n  'Bathroom Remodeling Consultation: Bathroom Size Sqft': { service: 'bathroom-remodeling-consultation', property: 'bathroom_size_sqft' },\n  'Bathroom Remodeling Consultation: Timeline Preference': { service: 'bathroom-remodeling-consultation', property: 'timeline_preference' }\n};\n\n// Helper function to extract service properties from appointment CSV data\nfunction extractServiceProperties(apt) {\n  const serviceSlug = apt.Service ? apt.Service.toLowerCase().replaceAll(' ', '-') : null;\n  const serviceProperties = {};\n  \n  // Extract service-specific properties from CSV columns\n  Object.keys(servicePropertyColumns).forEach(columnName => {\n    const columnConfig = servicePropertyColumns[columnName];\n    if (columnConfig.service === serviceSlug && apt[columnName]) {\n      serviceProperties[columnConfig.property] = apt[columnName];\n    }\n  });\n  \n  return serviceProperties;\n}\n\n// Format appointments array for response with enhanced service data\nconst formattedAppointments = apts.map(apt => {\n  const serviceProperties = extractServiceProperties(apt);\n  const serviceSlug = apt.Service ? apt.Service.toLowerCase().replaceAll(' ', '-') : null;\n  \n  return {\n    appointment_id: apt['Google Calendar Event ID'] || '',\n    name: apt.Name,\n    date: apt.Date,\n    time: apt.Time,\n    phone: apt.Phone,\n    email: apt.Email || '',\n    preferred_contact_method: apt['Preferred Contact Method'] || '',\n    service: apt.Service,\n    service_slug: serviceSlug,\n    service_properties: serviceProperties,\n    notes: apt.Notes || '',\n    timezone: apt.Timezone || '',\n    context_summary: `${apt.Service} appointment on ${apt.Date} at ${apt.Time}`\n  };\n});\n\nreturn [{\n  json: {\n    status: 'success',\n    message: message,\n    data: {\n      appointments: formattedAppointments,\n      total_matches: count\n    }\n  }\n}];"
+      },
+      "id": "bb6d1aa3-0cd8-43cc-9dd6-59d1247c23f0",
+      "name": "Format Success Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (data.status === 'failure') return [{ json: data }];\nreturn [];"
+      },
+      "id": "b7577869-53c3-491d-8798-b94c33b9b796",
+      "name": "Handle Validation Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        -75
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nif (input.error || input.code) {\n  const err = input.error || input;\n  return [{\n    json: {\n      status: 'error',\n      message: 'A system error occurred while searching for appointments.',\n      data: {\n        error_type: err.code || 'IDENTIFY_APPOINTMENT_ERROR',\n        error_message: err.message || 'Unknown error',\n        timestamp: new Date().toISOString(),\n        retry_possible: true,\n        technical_details: err\n      }\n    }\n  }];\n}\n\nreturn [];"
+      },
+      "id": "ad47a1ad-b34a-454b-bf14-2415c5662911",
+      "name": "Handle System Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a1bbed16-e379-46dc-a359-d938a1444b32",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        820,
+        -75
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "02753312-c6b3-49c1-9f10-5f648aedb61a",
+      "name": "Merge Search Data with Appointments",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        160,
+        -240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Extract Data": {
+      "main": [
+        [
+          {
+            "node": "Get Appointments from Sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Search Data with Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Appointments from Sheet": {
+      "main": [
+        [
+          {
+            "node": "Handle System Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Search Data with Appointments",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Format Matched Appointments": {
+      "main": [
+        [
+          {
+            "node": "Format Success Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Handle Validation Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Validation Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle System Error": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Search Data with Appointments": {
+      "main": [
+        [
+          {
+            "node": "Format Matched Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
+  }
+}

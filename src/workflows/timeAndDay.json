@@ -1,5 +1,4 @@
 {
-  "name": "timeAndDay",
   "nodes": [
     {
       "parameters": {
@@ -9,8 +8,11 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-340, -60],
-      "id": "644feef3-b2f2-4d59-ab12-f103c1dd06e0",
+      "position": [
+        -280,
+        -20
+      ],
+      "id": "8e09c338-99b6-4527-b290-0eaa33176458",
       "name": "Webhook",
       "webhookId": "46d36bed-b753-453e-b44f-7011e7b98041"
     },
@@ -22,8 +24,11 @@
       },
       "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
-      "position": [100, -60],
-      "id": "5cb085ef-9f13-4f50-acc1-cffd96f49b5e",
+      "position": [
+        160,
+        -20
+      ],
+      "id": "0b69e2ed-281b-4108-936f-195aa31f410d",
       "name": "Date & Time"
     },
     {
@@ -32,19 +37,25 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.3,
-      "position": [540, -60],
-      "id": "c6df5f79-a42b-46fd-88e5-b98b350cfecc",
+      "position": [
+        600,
+        -20
+      ],
+      "id": "cc2affe5-efe7-4b56-abc4-268eb896871c",
       "name": "Respond to Webhook"
     },
     {
       "parameters": {
-        "functionCode": "const dateData = $json;\n\n// Extract timezone from Date & Time node\nconst timezone = 'America/Chicago'; // From Date & Time node configuration\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Datetime and timezone information retrieved.',\n    data: {\n      currentDate: dateData.currentDate,\n      timezone: timezone,\n      timezoneOffset: new Date().getTimezoneOffset() / -60\n    }\n  }\n}];"
+        "jsCode": "const dateData = $input.first().json;\n\n// Extract timezone from Date & Time node\nconst timezone = 'America/Chicago'; // From Date & Time node configuration\n\nreturn [{\n  json: {\n    status: 'success',\n    message: 'Datetime and timezone information retrieved.',\n    data: {\n      currentDate: dateData.currentDate,\n      timezone: timezone,\n      timezoneOffset: new Date().getTimezoneOffset() / -60\n    }\n  }\n}];"
       },
-      "id": "3550ae52-45a7-47ae-bfd3-d2d12aa39f14",
-      "name": "Format Success",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [320, -60]
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        -20
+      ],
+      "id": "79ab596c-0279-4947-b710-89843b85ecf0",
+      "name": "Format Success"
     },
     {
       "parameters": {
@@ -62,18 +73,20 @@
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-120, -60],
-      "id": "a3405561-502c-4ade-932b-73f40d79ad69",
-      "name": "Edit Fields"
+      "position": [
+        -60,
+        -20
+      ],
+      "id": "f0f5066f-bdf9-4ab1-bea2-4c6ac3767991",
+      "name": "Validate & Extract Data"
     }
   ],
-  "pinData": {},
   "connections": {
     "Webhook": {
       "main": [
         [
           {
-            "node": "Edit Fields",
+            "node": "Validate & Extract Data",
             "type": "main",
             "index": 0
           }
@@ -102,7 +115,7 @@
         ]
       ]
     },
-    "Edit Fields": {
+    "Validate & Extract Data": {
       "main": [
         [
           {
@@ -114,14 +127,8 @@
       ]
     }
   },
-  "active": true,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "108317dd-0644-4537-8c3b-19a09e7cc5f4",
+  "pinData": {},
   "meta": {
     "instanceId": "fb6957930478fef911a2c66f712c2194cb787efb785d4054dd3abe6cedcf5702"
-  },
-  "id": "vB50fM1CHCImC1wm",
-  "tags": []
+  }
 }
