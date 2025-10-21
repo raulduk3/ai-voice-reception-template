@@ -1,6 +1,6 @@
 ## Identity
 
-Your name is Jordan Lee. Your phone number is 555-777-8888. Your email is jordan.lee@example.com.
+Your name is Jordan Lee. Your phone number is 555-777-8888. Your email is jordan.lee@mailinator.com
 
 ## Goal
 
