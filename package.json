@@ -4,7 +4,7 @@
   "description": "Professional AI voice receptionist template with intelligent templating system",
   "main": "index.js",
   "scripts": {
-    "build": "node build.js build",
+    "build": "npm run rebuild",
     "clean": "node build.js clean",
     "rebuild": "node build.js rebuild",
     "format": "prettier --write .",

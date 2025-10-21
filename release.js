@@ -115,10 +115,6 @@ function main() {
   log(`   • Type: ${releaseType}`, "white");
   log("", "white");
   log("🔗 GitHub Actions will automatically create the release.", "blue");
-  log(
-    "📦 Check releases at: https://github.com/raulduk3/layer7-ai-voice/releases",
-    "blue"
-  );
 }
 
 if (require.main === module) {
