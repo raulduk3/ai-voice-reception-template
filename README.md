@@ -25,8 +25,8 @@ for unlimited clients with automated configuration management and prompt injecti
 
 ### Deployment & Operations
 
-- [Deployment](#deployment)
 - [Available Commands](#available-commands)
+- [Release Management](#release-management)
 - [Real-World Examples](#real-world-examples)
 
 ### Development & Extension
@@ -364,6 +364,7 @@ The build system is highly optimized for speed and efficiency:
   },
   "runtime_variables": {
     "business_name": "Downtown Dental Care",
+    "business_description": "Family dental practice serving downtown for over 20 years",
     "appointment_types": "Cleanings, Fillings, Root Canals",
     "transfer_phone_number": "+1234567890"
   }
@@ -403,6 +404,7 @@ The build system is highly optimized for speed and efficiency:
   },
   "runtime_variables": {
     "business_name": "Bella's Beauty Network",
+    "business_description": "Multi-location beauty salon chain specializing in hair, nails, and wellness",
     "appointment_types": "Hair Styling, Nail Services, Massage Therapy",
     "ai_support_hours": "Daily 7AM-10PM"
   }
