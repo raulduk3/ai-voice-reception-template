@@ -9,10 +9,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -300,
-        -290
-      ],
+      "position": [-300, -290],
       "id": "86257671-447d-4dbf-871c-18fbd60e698b",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
@@ -25,10 +22,7 @@
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -80,
-        -290
-      ]
+      "position": [-80, -290]
     },
     {
       "parameters": {
@@ -44,10 +38,7 @@
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [
-        140,
-        -540
-      ],
+      "position": [140, -540],
       "id": "ba66d268-32e3-4d7e-91e8-690e6e7086a9",
       "name": "Delete Calendar Event",
       "credentials": {
@@ -65,10 +56,7 @@
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        580,
-        -240
-      ]
+      "position": [580, -240]
     },
     {
       "parameters": {
@@ -78,10 +66,7 @@
       "name": "Handle Validation Failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        580,
-        -40
-      ]
+      "position": [580, -40]
     },
     {
       "parameters": {
@@ -91,10 +76,7 @@
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        360,
-        -490
-      ]
+      "position": [360, -490]
     },
     {
       "parameters": {
@@ -104,10 +86,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        800,
-        -240
-      ]
+      "position": [800, -240]
     },
     {
       "parameters": {
@@ -135,9 +114,7 @@
             "Location": "CANCELED",
             "Notes": "CANCELED"
           },
-          "matchingColumns": [
-            "Time"
-          ],
+          "matchingColumns": ["Time"],
           "schema": [
             {
               "id": "Name",
@@ -270,10 +247,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        360,
-        -240
-      ],
+      "position": [360, -240],
       "id": "403ab84b-1719-457a-9917-fc868119f80f",
       "name": "Remove Calendar ID",
       "credentials": {
@@ -309,9 +283,7 @@
             "Location": "CANCELED",
             "Notes": "CANCELED"
           },
-          "matchingColumns": [
-            "Google Calendar Event ID"
-          ],
+          "matchingColumns": ["Google Calendar Event ID"],
           "schema": [
             {
               "id": "Name",
@@ -443,10 +415,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        140,
-        -290
-      ],
+      "position": [140, -290],
       "id": "2a8d3dc1-a560-4343-a514-02556235c42f",
       "name": "Cancel Appointment",
       "credentials": {
