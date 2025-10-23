@@ -8,10 +8,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        500,
-        190
-      ]
+      "position": [500, 190]
     },
     {
       "parameters": {
@@ -21,36 +18,27 @@
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -3020,
-        -60
-      ]
+      "position": [-3020, -60]
     },
     {
       "parameters": {
-        "jsCode": "// Dynamic service property parsing for enhanced modification schema\nconst input = $input.first().json;\n\n// Extract updates object and service information\nconst appointmentId = input.appointment_id;\nconst updates = input.updates || {};\nconst timeProvided = input.time_provided;\n\n// Extract selected service if service is being updated\nlet selectedService = null;\nlet serviceDisplayName = null;\nlet serviceProperties = {};\n\n// Check if service is being updated\nif (updates.service) {\n  // Handle both nested service object and direct service string\n  if (typeof updates.service === 'object') {\n    selectedService = Object.keys(updates.service).find(key => updates.service[key] === true);\n  } else if (typeof updates.service === 'string') {\n    selectedService = updates.service;\n  }\n\n  if (selectedService) {\n    // Service configuration mapping (slug -> display name)\n    const serviceMapping = {\n      'consultation': 'Consultation',\n      'follow-up': 'Follow-Up',\n      'bathroom-remodeling-consultation': 'Bathroom Remodeling Consultation'\n    };\n\n    // Get service display name\n    serviceDisplayName = serviceMapping[selectedService] || selectedService.replace(/-/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n\n    // Extract service properties if provided\n    const servicePropsInput = input.service_properties || {};\n    serviceProperties = servicePropsInput[selectedService] || {};\n\n    // Define required properties per service (from config)\n    const requiredProperties = {\n      'consultation': ['project_type', 'budget_range'],\n      'follow-up': ['previous_project'],\n      'bathroom-remodeling-consultation': ['location', 'budget', 'budget_grade']\n    };\n\n    // Validate required service properties only if service properties were provided\n    if (Object.keys(serviceProperties).length > 0) {\n      const requiredForService = requiredProperties[selectedService] || [];\n      const missingServiceProps = requiredForService.filter(prop => !serviceProperties[prop]);\n\n      if (missingServiceProps.length > 0) {\n        return [{\n          json: {\n            status: 'failure',\n            message: `Missing required service properties for ${serviceDisplayName}: ${missingServiceProps.join(', ')}`,\n            data: {\n              service: selectedService,\n              missing_service_properties: missingServiceProps,\n              timestamp: new Date().toISOString()\n            }\n          }\n        }];\n      }\n    }\n  }\n}\n\n// Build enhanced modification data\nconst modificationData = {\n  appointment_id: appointmentId,\n  updates: updates,\n  time_provided: timeProvided,\n  \n  // Service information (only if service is being updated)\n  ...(selectedService && {\n    service: serviceDisplayName,\n    service_slug: selectedService,\n    service_properties: serviceProperties,\n    // Flatten service properties for easy access\n    ...serviceProperties\n  })\n};\n\nreturn [{ json: modificationData }];"
+        "jsCode": "// Dynamic service property parsing for enhanced modification schema\nconst input = $input.first().json;\n\n// Extract updates object and service information\nconst appointmentId = input.appointment_id;\nconst updates = input.updates || {};\nconst timeProvided = input.time_provided;\n\n// Extract selected service if service is being updated\nlet selectedService = null;\nlet serviceDisplayName = null;\nlet serviceProperties = {};\n\n// Check if service is being updated\nif (updates.service) {\n  // Handle both nested service object and direct service string\n  if (typeof updates.service === 'object') {\n    selectedService = Object.keys(updates.service).find(key => updates.service[key] === true);\n  } else if (typeof updates.service === 'string') {\n    selectedService = updates.service;\n  }\n\n  if (selectedService) {\n    // Service configuration mapping (slug -> display name)\n    const serviceMapping = {{SERVICE_MAPPING}};\n\n    // Get service display name\n    serviceDisplayName = serviceMapping[selectedService] || selectedService.replace(/-/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n\n    // Extract service properties if provided\n    const servicePropsInput = input.service_properties || {};\n    serviceProperties = servicePropsInput[selectedService] || {};\n\n    // Define required properties per service (from config)\n    const requiredProperties = {{REQUIRED_PROPERTIES}};\n\n    // Validate required service properties only if service properties were provided\n    if (Object.keys(serviceProperties).length > 0) {\n      const requiredForService = requiredProperties[selectedService] || [];\n      const missingServiceProps = requiredForService.filter(prop => !serviceProperties[prop]);\n\n      if (missingServiceProps.length > 0) {\n        return [{\n          json: {\n            status: 'failure',\n            message: `Missing required service properties for ${serviceDisplayName}: ${missingServiceProps.join(', ')}`,\n            data: {\n              service: selectedService,\n              missing_service_properties: missingServiceProps,\n              timestamp: new Date().toISOString()\n            }\n          }\n        }];\n      }\n    }\n  }\n}\n\n// Build enhanced modification data\nconst modificationData = {\n  appointment_id: appointmentId,\n  updates: updates,\n  time_provided: timeProvided,\n  \n  // Service information (only if service is being updated)\n  ...(selectedService && {\n    service: serviceDisplayName,\n    service_slug: selectedService,\n    service_properties: serviceProperties,\n    // Flatten service properties for easy access\n    ...serviceProperties\n  })\n};\n\nreturn [{ json: modificationData }];"
       },
       "id": "d9ed26fc-4c45-4457-aa65-46b663a51ffb",
       "name": "Parse Service Properties",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2800,
-        -60
-      ]
+      "position": [-2800, -60]
     },
     {
       "parameters": {
-        "jsCode": "// Map service properties to CSV column format for appointment modifications\nconst input = $input.first().json;\n\n// Pass through failure status\nif (input.status === 'failure') {\n  return [{ json: input }];\n}\n\n// CSV column mapping for service properties\nconst csvServiceColumns = {};\n\n// If service is being updated with properties, map them to CSV columns\nif (input.service_slug && input.service_properties) {\n  const serviceSlug = input.service_slug;\n  const serviceDisplayName = input.service;\n  const serviceProperties = input.service_properties;\n  \n  // Service property to CSV column mapping\n  const propertyColumnMappings = {\n    'consultation': {\n      'project_type': 'Project Type',\n      'budget_range': 'Budget Range',\n      'timeline_weeks': 'Timeline Weeks'\n    },\n    'follow-up': {\n      'previous_project': 'Previous Project'\n    },\n    'bathroom-remodeling-consultation': {\n      'location': 'Location',\n      'budget': 'Budget',\n      'budget_grade': 'Budget Grade',\n      'bathroom_size_sqft': 'Bathroom Size SQFT',\n      'timeline_preference': 'Timeline Preference'\n    }\n  };\n  \n  const mappings = propertyColumnMappings[serviceSlug] || {};\n  \n  // Map each service property to its CSV column\n  for (const [propertyKey, propertyValue] of Object.entries(serviceProperties)) {\n    const columnDisplayName = mappings[propertyKey];\n    if (columnDisplayName && propertyValue) {\n      const csvColumnName = `${serviceDisplayName}: ${columnDisplayName}`;\n      csvServiceColumns[csvColumnName] = propertyValue;\n    }\n  }\n}\n\n// Add CSV columns to output (calendar description will be generated later in Format New Calendar Event)\nconst output = {\n  ...input,\n  csv_service_columns: csvServiceColumns\n};\n\nreturn [{ json: output }];"
+        "jsCode": "// Map service properties to CSV column format for appointment modifications\nconst input = $input.first().json;\n\n// Pass through failure status\nif (input.status === 'failure') {\n  return [{ json: input }];\n}\n\n// CSV column mapping for service properties\nconst csvServiceColumns = {};\n\n// If service is being updated with properties, map them to CSV columns\nif (input.service_slug && input.service_properties) {\n  const serviceSlug = input.service_slug;\n  const serviceDisplayName = input.service;\n  const serviceProperties = input.service_properties;\n  \n  // Service property to CSV column mapping\n  const propertyColumnMappings = {{COLUMN_MAPPING}};\n  \n  const mappings = propertyColumnMappings[serviceSlug] || {};\n  \n  // Map each service property to its CSV column\n  for (const [propertyKey, propertyValue] of Object.entries(serviceProperties)) {\n    const columnDisplayName = mappings[propertyKey];\n    if (columnDisplayName && propertyValue) {\n      const csvColumnName = `${serviceDisplayName}: ${columnDisplayName}`;\n      csvServiceColumns[csvColumnName] = propertyValue;\n    }\n  }\n}\n\n// Add CSV columns to output (calendar description will be generated later in Format New Calendar Event)\nconst output = {\n  ...input,\n  csv_service_columns: csvServiceColumns\n};\n\nreturn [{ json: output }];"
       },
       "id": "78015af9-afb5-45f9-bf7a-00dea3940b82",
       "name": "Map to CSV Format",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2580,
-        -60
-      ]
+      "position": [-2580, -60]
     },
     {
       "parameters": {
@@ -58,10 +46,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2580,
-        340
-      ],
+      "position": [-2580, 340],
       "id": "09f3653a-5e3c-4009-bc9a-c8018b8da21b",
       "name": "Format Services"
     },
@@ -85,10 +70,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        -2800,
-        440
-      ],
+      "position": [-2800, 440],
       "id": "31db2eb1-1cca-4546-a7c8-556ffce14c38",
       "name": "Get Services",
       "executeOnce": true,
@@ -108,10 +90,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -2360,
-        40
-      ],
+      "position": [-2360, 40],
       "id": "283f6ed9-354e-4cd5-8174-9fcbd88afb01",
       "name": "Merge Service with Booking Details"
     },
@@ -121,10 +100,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2140,
-        40
-      ],
+      "position": [-2140, 40],
       "id": "1eadf643-fa45-47cf-970a-2e9510db96ef",
       "name": "Calculate Booking Duration and Datetime"
     },
@@ -143,10 +119,7 @@
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [
-        -1920,
-        340
-      ],
+      "position": [-1920, 340],
       "id": "cf43e1ba-0965-4998-8129-a94d40913d28",
       "name": "Get Slot Availability",
       "executeOnce": true,
@@ -166,10 +139,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -1700,
-        40
-      ],
+      "position": [-1700, 40],
       "id": "ec11ccb8-f215-444d-9a29-d3bdba2be7d5",
       "name": "Merge Booking with Availability"
     },
@@ -200,10 +170,7 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        -1480,
-        40
-      ],
+      "position": [-1480, 40],
       "id": "f5aa350a-ead2-44a2-823b-6d4c6795d06c",
       "name": "Disallow Double-Booking"
     },
@@ -213,10 +180,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        280,
-        315
-      ],
+      "position": [280, 315],
       "id": "b090fd89-e95e-4998-bad2-3b5415928459",
       "name": "Format Booking Slot Occupied"
     },
@@ -234,10 +198,7 @@
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [
-        -1260,
-        -260
-      ],
+      "position": [-1260, -260],
       "id": "215352e4-3c02-4fc7-950d-978a6345c804",
       "name": "Delete Old Event",
       "executeOnce": true,
@@ -277,10 +238,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        -1260,
-        -60
-      ],
+      "position": [-1260, -60],
       "id": "f93e8258-0f96-4304-adb0-a2f6a375717f",
       "name": "Get Appointment Data From Sheet",
       "credentials": {
@@ -299,10 +257,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -1040,
-        90
-      ],
+      "position": [-1040, 90],
       "id": "a4c2e20d-e796-4c2d-8b2d-026fa3f7bac1",
       "name": "Merge Sheet Data with Booking"
     },
@@ -312,10 +267,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -820,
-        90
-      ],
+      "position": [-820, 90],
       "id": "eabfa9f0-9ec9-42a0-9322-ddaa59846b3f",
       "name": "Format New Calendar Event"
     },
@@ -327,10 +279,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -380,
-        90
-      ],
+      "position": [-380, 90],
       "id": "22fa8978-bb35-4de7-a379-326170260e7f",
       "name": "Merge GCal Event and Appointment Data"
     },
@@ -354,9 +303,7 @@
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
-          "matchingColumns": [
-            "row_number"
-          ],
+          "matchingColumns": ["row_number"],
           "schema": [
             {
               "id": "Name",
@@ -549,10 +496,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        60,
-        90
-      ],
+      "position": [60, 90],
       "id": "cf773cd7-423a-4d64-acae-ba73749c5a87",
       "name": "Google Sheets",
       "executeOnce": true,
@@ -574,23 +518,17 @@
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        280,
-        90
-      ]
+      "position": [280, 90]
     },
     {
       "parameters": {
-        "jsCode": "// Format complete appointment data for Google Sheets update\n// This receives merged data from calendar event creation and complete appointment data\nconst input = $input.first().json;\n\n// Pass through failure status\nif (input.status === 'failure') {\n  return [{ json: input }];\n}\n\n// Extract calendar event ID (preserve existing ID since this is a modification)\nconst calendarEventId = input.id || input.event_id || input.google_calendar_event_id || input['google_calendar_event_id'] || '';\nconst appointmentData = input;\n\n// Create comprehensive CSV data object using ALL available data (existing + updates)\nconst csvData = {\n  'Name': appointmentData.name || appointmentData.Name || '',\n  'Phone': appointmentData.phone || appointmentData.Phone || '',\n  'Email': appointmentData.email || appointmentData.Email || '',\n  'Preferred Contact Method': appointmentData.preferred_contact_method || appointmentData['Preferred Contact Method'] || '',\n  'Date': appointmentData.date || appointmentData.Date || '',\n  'Time': appointmentData.time || appointmentData.Time || '',\n  'Service': appointmentData.service || appointmentData.Service || '',\n  'Duration': appointmentData.duration || appointmentData.Duration || '',\n  'Status': appointmentData.status || appointmentData.Status || 'Confirmed',\n  'Notes': appointmentData.notes || appointmentData.Notes || '',\n  'Google Calendar Event ID': calendarEventId,\n  'Created': appointmentData.created || appointmentData.Created || '',\n  'Modified': new Date().toISOString(),\n  'row_number': appointmentData.row_number || appointmentData.row_number || '',\n};\n\n// Preserve ALL existing service-specific columns from the original appointment\n// Look for any columns that contain ':' (service-specific format)\nObject.keys(appointmentData).forEach(key => {\n  if (key.includes(':') && appointmentData[key] !== undefined && appointmentData[key] !== null) {\n    csvData[key] = appointmentData[key];\n  }\n});\n\n// Add/update service-specific properties from CSV service columns if new service was provided\nif (appointmentData.csv_service_columns) {\n  // Use pre-mapped CSV service columns from Map to CSV Format node\n  Object.assign(csvData, appointmentData.csv_service_columns);\n} else if (appointmentData.service_slug && appointmentData.service_properties) {\n  // Fallback: map service properties manually\n  const columnMapping = {\n    'consultation': {\n      'project_type': 'Consultation: Project Type',\n      'budget_range': 'Consultation: Budget Range',\n      'timeline_weeks': 'Consultation: Timeline Weeks'\n    },\n    'follow-up': {\n      'previous_project': 'Follow-Up: Previous Project'\n    },\n    'bathroom-remodeling-consultation': {\n      'location': 'Bathroom Remodeling Consultation: Location',\n      'budget': 'Bathroom Remodeling Consultation: Budget',\n      'budget_grade': 'Bathroom Remodeling Consultation: Budget Grade',\n      'bathroom_size_sqft': 'Bathroom Remodeling Consultation: Bathroom Size SQFT',\n      'timeline_preference': 'Bathroom Remodeling Consultation: Timeline Preference'\n    }\n  };\n  \n  const serviceColumns = columnMapping[appointmentData.service_slug];\n  if (serviceColumns) {\n    Object.keys(serviceColumns).forEach(propKey => {\n      const columnName = serviceColumns[propKey];\n      const value = appointmentData.service_properties[propKey];\n      if (value !== undefined && value !== null) {\n        csvData[columnName] = value;\n      }\n    });\n  }\n}\n\n// Return complete CSV data ready for Google Sheets update\nreturn [{ json: csvData }];"
+        "jsCode": "// Format complete appointment data for Google Sheets update\n// This receives merged data from calendar event creation and complete appointment data\nconst input = $input.first().json;\n\n// Pass through failure status\nif (input.status === 'failure') {\n  return [{ json: input }];\n}\n\n// Extract calendar event ID (preserve existing ID since this is a modification)\nconst calendarEventId = input.id || input.event_id || input.google_calendar_event_id || input['google_calendar_event_id'] || '';\nconst appointmentData = input;\n\n// Create comprehensive CSV data object using ALL available data (existing + updates)\nconst csvData = {\n  'Name': appointmentData.name || appointmentData.Name || '',\n  'Phone': appointmentData.phone || appointmentData.Phone || '',\n  'Email': appointmentData.email || appointmentData.Email || '',\n  'Preferred Contact Method': appointmentData.preferred_contact_method || appointmentData['Preferred Contact Method'] || '',\n  'Date': appointmentData.date || appointmentData.Date || '',\n  'Time': appointmentData.time || appointmentData.Time || '',\n  'Service': appointmentData.service || appointmentData.Service || '',\n  'Duration': appointmentData.duration || appointmentData.Duration || '',\n  'Status': appointmentData.status || appointmentData.Status || 'Confirmed',\n  'Notes': appointmentData.notes || appointmentData.Notes || '',\n  'Google Calendar Event ID': calendarEventId,\n  'Created': appointmentData.created || appointmentData.Created || '',\n  'Modified': new Date().toISOString(),\n  'row_number': appointmentData.row_number || appointmentData.row_number || '',\n};\n\n// Preserve ALL existing service-specific columns from the original appointment\n// Look for any columns that contain ':' (service-specific format)\nObject.keys(appointmentData).forEach(key => {\n  if (key.includes(':') && appointmentData[key] !== undefined && appointmentData[key] !== null) {\n    csvData[key] = appointmentData[key];\n  }\n});\n\n// Add/update service-specific properties from CSV service columns if new service was provided\nif (appointmentData.csv_service_columns) {\n  // Use pre-mapped CSV service columns from Map to CSV Format node\n  Object.assign(csvData, appointmentData.csv_service_columns);\n} else if (appointmentData.service_slug && appointmentData.service_properties) {\n  // Fallback: map service properties manually\n  const columnMapping = {{COLUMN_MAPPING}};\n  \n  const serviceColumns = columnMapping[appointmentData.service_slug];\n  if (serviceColumns) {\n    Object.keys(serviceColumns).forEach(propKey => {\n      const columnName = serviceColumns[propKey];\n      const value = appointmentData.service_properties[propKey];\n      if (value !== undefined && value !== null) {\n        csvData[columnName] = value;\n      }\n    });\n  }\n}\n\n// Return complete CSV data ready for Google Sheets update\nreturn [{ json: csvData }];"
       },
       "id": "13ac270b-ad8e-4f33-ac72-50a3e8e71bad",
       "name": "Format for Google Sheets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -160,
-        90
-      ]
+      "position": [-160, 90]
     },
     {
       "parameters": {
@@ -600,10 +538,7 @@
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        280,
-        515
-      ]
+      "position": [280, 515]
     },
     {
       "parameters": {
@@ -613,10 +548,7 @@
       "name": "Handle System Error1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1040,
-        -210
-      ]
+      "position": [-1040, -210]
     },
     {
       "parameters": {
@@ -627,10 +559,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -3240,
-        240
-      ],
+      "position": [-3240, 240],
       "id": "5c1eef1e-4c53-4d33-a1db-bc5c83fcc30c",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
@@ -646,9 +575,7 @@
         "start": "={{ $json.start_datetime }}",
         "end": "={{ $json.end_datetime }}",
         "additionalFields": {
-          "attendees": [
-            "={{ $json.email }}"
-          ],
+          "attendees": ["={{ $json.email }}"],
           "description": "={{ $json.calendar_description }}",
           "location": "={{ $json.location || '' }}",
           "sendUpdates": "all",
@@ -657,10 +584,7 @@
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [
-        -600,
-        20
-      ],
+      "position": [-600, 20],
       "id": "4c5ab1cd-754d-4a65-9891-d92a7e315417",
       "name": "Create Google Calendar Event1",
       "executeOnce": true,
