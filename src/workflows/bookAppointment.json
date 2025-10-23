@@ -8,23 +8,17 @@
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2360,
-        0
-      ]
+      "position": [-2360, 0]
     },
     {
       "parameters": {
-        "jsCode": "// Dynamic service property parsing for enhanced booking schema\nconst body = $input.first().json;\n\n// Extract selected service from service object\nconst serviceObj = body.service;\nlet selectedService = Object.keys(serviceObj).find(key => serviceObj[key] === true);\n\nif (!selectedService) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No service selected',\n      data: {\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Service configuration mapping (slug -> display name)\nconst serviceMapping = {\n  'consultation': 'Consultation',\n  'follow-up': 'Follow-Up',\n  'bathroom-remodeling-consultation': 'Bathroom Remodeling Consultation'\n};\n\n// Get service display name\nconst serviceDisplayName = serviceMapping[selectedService] || selectedService.replaceAll('-', ' ');\n\n// Extract service properties for the selected service\nconst serviceProperties = body.service_properties && body.service_properties[selectedService] ? body.service_properties[selectedService] : {};\n\n// Define required properties per service (from config)\nconst requiredProperties = {\n  'consultation': ['project_type', 'budget_range'],\n  'follow-up': ['previous_project'],\n  'bathroom-remodeling-consultation': ['location', 'budget', 'budget_grade']\n};\n\n// Validate required service properties\nconst requiredForService = requiredProperties[selectedService] || [];\nconst missingServiceProps = requiredForService.filter(prop => !serviceProperties[prop]);\n\nif (missingServiceProps.length > 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Missing required service properties for ${serviceDisplayName}: ${missingServiceProps.join(', ')}`,\n      data: {\n        service: selectedService,\n        missing_service_properties: missingServiceProps,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Build final appointment data with parsed service info\nconst appointmentData = {\n  // Base appointment fields\n  name: body.name,\n  date: body.date,\n  time: body.time,\n  phone: body.phone,\n  email: body.email,\n  preferred_contact_method: body.preferred_contact_method,\n  timezone: body.timezone,\n  notes: body.notes || '',\n  \n  // Service information\n  service: serviceDisplayName,\n  service_slug: selectedService,\n  service_properties: serviceProperties,\n  \n  // Flatten service properties for easy access\n  ...serviceProperties\n};\n\nreturn [{ json: appointmentData }];"
+        "jsCode": "// Dynamic service property parsing for enhanced booking schema\nconst body = $input.first().json;\n\n// Extract selected service from service object\nconst serviceObj = body.service;\nlet selectedService = Object.keys(serviceObj).find(key => serviceObj[key] === true);\n\nif (!selectedService) {\n  return [{\n    json: {\n      status: 'failure',\n      message: 'No service selected',\n      data: {\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Service configuration mapping (slug -> display name)\nconst serviceMapping = {{SERVICE_MAPPING}};\n\n// Get service display name\nconst serviceDisplayName = serviceMapping[selectedService] || selectedService.replaceAll('-', ' ');\n\n// Extract service properties for the selected service\nconst serviceProperties = body.service_properties && body.service_properties[selectedService] ? body.service_properties[selectedService] : {};\n\n// Define required properties per service (from config)\nconst requiredProperties = {{REQUIRED_PROPERTIES}};\n\n// Validate required service properties\nconst requiredForService = requiredProperties[selectedService] || [];\nconst missingServiceProps = requiredForService.filter(prop => !serviceProperties[prop]);\n\nif (missingServiceProps.length > 0) {\n  return [{\n    json: {\n      status: 'failure',\n      message: `Missing required service properties for ${serviceDisplayName}: ${missingServiceProps.join(', ')}`,\n      data: {\n        service: selectedService,\n        missing_service_properties: missingServiceProps,\n        timestamp: new Date().toISOString()\n      }\n    }\n  }];\n}\n\n// Build final appointment data with parsed service info\nconst appointmentData = {\n  // Base appointment fields\n  name: body.name,\n  date: body.date,\n  time: body.time,\n  phone: body.phone,\n  email: body.email,\n  preferred_contact_method: body.preferred_contact_method,\n  timezone: body.timezone,\n  notes: body.notes || '',\n  \n  // Service information\n  service: serviceDisplayName,\n  service_slug: selectedService,\n  service_properties: serviceProperties,\n  \n  // Flatten service properties for easy access\n  ...serviceProperties\n};\n\nreturn [{ json: appointmentData }];"
       },
       "id": "75a462f8-4149-4f0d-9529-1a169d441181",
       "name": "Parse Service Properties",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2140,
-        -75
-      ]
+      "position": [-2140, -75]
     },
     {
       "parameters": {
@@ -34,10 +28,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        940,
-        -175
-      ]
+      "position": [940, -175]
     },
     {
       "parameters": {
@@ -48,10 +39,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -2580,
-        150
-      ],
+      "position": [-2580, 150],
       "id": "f4f3b76e-c982-4ddb-9612-bd66d844df81",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
@@ -76,10 +64,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        -2360,
-        450
-      ],
+      "position": [-2360, 450],
       "id": "64ff6421-1669-484d-a735-b3923313b9e3",
       "name": "Get Services",
       "credentials": {
@@ -98,10 +83,7 @@
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        500,
-        -600
-      ]
+      "position": [500, -600]
     },
     {
       "parameters": {
@@ -111,10 +93,7 @@
       "name": "Handle Validation Failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1920,
-        200
-      ]
+      "position": [-1920, 200]
     },
     {
       "parameters": {
@@ -131,10 +110,7 @@
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [
-        -1260,
-        -50
-      ],
+      "position": [-1260, -50],
       "id": "8bd4bf2a-2560-49e8-8058-3f09d90e079d",
       "name": "Get Slot Availability",
       "credentials": {
@@ -152,10 +128,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -1040,
-        -300
-      ],
+      "position": [-1040, -300],
       "id": "9b57a606-5c8c-46e2-a036-be02a2231574",
       "name": "Merge Booking with Availability"
     },
@@ -186,10 +159,7 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        -820,
-        -300
-      ],
+      "position": [-820, -300],
       "id": "45b078d7-2e1e-4c42-ba20-21fcdee29358",
       "name": "Disallow Double-Booking?"
     },
@@ -199,10 +169,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        720,
-        -150
-      ],
+      "position": [720, -150],
       "id": "ce762eae-9531-45f0-9c57-6aed499a46e2",
       "name": "Format Booking Slot Occupied"
     },
@@ -217,9 +184,7 @@
         "start": "={{ $json.start_datetime }}",
         "end": "={{ $json.end_datetime }}",
         "additionalFields": {
-          "attendees": [
-            "={{ $json.email }}"
-          ],
+          "attendees": ["={{ $json.email }}"],
           "description": "={{ $json.calendar_description }}",
           "location": "={{ $json.location || '' }}",
           "sendUpdates": "all",
@@ -228,10 +193,7 @@
       },
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [
-        -600,
-        -600
-      ],
+      "position": [-600, -600],
       "id": "d46557fa-6e32-43ce-9f1c-b830867a0717",
       "name": "Create Google Calendar Event",
       "executeOnce": true,
@@ -252,10 +214,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -380,
-        -425
-      ],
+      "position": [-380, -425],
       "id": "f7c07097-12db-43f0-8790-01a9437255f8",
       "name": "Merge GCal Event and Booking Data"
     },
@@ -267,10 +226,7 @@
       "name": "Format for Google Sheets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -160,
-        -425
-      ]
+      "position": [-160, -425]
     },
     {
       "parameters": {
@@ -292,9 +248,7 @@
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
-          "matchingColumns": [
-            "id"
-          ],
+          "matchingColumns": ["id"],
           "schema": [
             {
               "id": "Name",
@@ -849,10 +803,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        280,
-        -475
-      ],
+      "position": [280, -475],
       "id": "0f5ab5fe-79e5-4f42-b671-629b3475eb43",
       "name": "Insert New Appointment",
       "alwaysOutputData": true,
@@ -870,10 +821,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1480,
-        -125
-      ],
+      "position": [-1480, -125],
       "id": "e9833486-bfb3-4ea2-8305-888d1d7f391e",
       "name": "Calculate Booking Duration and Datetime"
     },
@@ -885,10 +833,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        -1920,
-        -125
-      ],
+      "position": [-1920, -125],
       "id": "d31fcc45-00d4-4162-9813-3a7c5d0fc3fc",
       "name": "Merge Service with Booking Details"
     },
@@ -900,10 +845,7 @@
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        720,
-        -350
-      ]
+      "position": [720, -350]
     },
     {
       "parameters": {
@@ -913,10 +855,7 @@
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
-      "position": [
-        500,
-        -350
-      ],
+      "position": [500, -350],
       "id": "bc4bc9f8-f003-4dc9-9938-6898be3d5744",
       "name": "Merge Sheet Data with Booking"
     },
@@ -928,10 +867,7 @@
       "name": "Handle System Error 2",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1040,
-        0
-      ]
+      "position": [-1040, 0]
     },
     {
       "parameters": {
@@ -939,10 +875,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -2140,
-        525
-      ],
+      "position": [-2140, 525],
       "id": "7337da52-78bf-4468-9a40-57fefc2d3d66",
       "name": "Format Services"
     },
@@ -952,25 +885,19 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        60,
-        -475
-      ],
+      "position": [60, -475],
       "id": "c7cfd23b-ce49-4073-a34f-284ff4d4517c",
       "name": "Extract CSV"
     },
     {
       "parameters": {
-        "jsCode": "// Map service properties to CSV format with proper column naming\nconst data = $input.first().json;\n\n// Get current timestamp for audit fields\nconst currentTimestamp = new Date().toISOString();\n\n// Base CSV columns matching generated schema\nconst csvData = {\n  'Name': data.name,\n  'Phone': data.phone,\n  'Email': data.email,\n  'Preferred Contact Method': data.preferred_contact_method,\n  'Date': data.date,\n  'Time': data.time,\n  'Service': data.service,\n  'Duration': data.duration || '',\n  'Status': 'Confirmed',\n  'Notes': data.notes || '',\n  'Google Calendar Event ID': '', // Will be updated after calendar creation\n  'Created': currentTimestamp,\n  'Modified': currentTimestamp\n};\n\n// Service property column mapping (slug -> proper column names) - matches config.json services\nconst columnMapping = {\n  'consultation': {\n    'project_type': 'Consultation: Project Type',\n    'budget_range': 'Consultation: Budget Range',\n    'timeline_weeks': 'Consultation: Timeline Weeks'\n  },\n  'follow-up': {\n    'previous_project': 'Follow-Up: Previous Project'\n  }\n};\n\n// Add service-specific properties to CSV data\nif (data.service_slug && data.service_properties && columnMapping[data.service_slug]) {\n  const serviceColumns = columnMapping[data.service_slug];\n  \n  Object.keys(serviceColumns).forEach(propKey => {\n    const columnName = serviceColumns[propKey];\n    const value = data.service_properties[propKey];\n    csvData[columnName] = value !== undefined ? value : '';\n  });\n}\n\n// Create Google Calendar event description with service properties\nlet description = `Service: ${data.service}\\n`;\nif (data.service_properties && Object.keys(data.service_properties).length > 0) {\n  description += '\\nService Details:\\n';\n  Object.keys(data.service_properties).forEach(key => {\n    const value = data.service_properties[key];\n    if (value !== undefined && value !== '') {\n      const displayKey = key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n      description += `${displayKey}: ${value}\\n`;\n    }\n  });\n}\nif (data.notes) {\n  description += `\\nNotes: ${data.notes}`;\n}\n\n// Add customer information to description\ndescription += `\\n--\\n\\nCustomer: ${data.name}\\nPreferred Contact: ${data.preferred_contact_method}\\nPhone: ${data.phone}\\nEmail: ${data.email}`;\n\n// Return enhanced appointment data with CSV mapping and calendar description\nreturn [{\n  json: {\n    ...data,\n    csv_data: csvData,\n    calendar_description: description\n  }\n}];"
+        "jsCode": "// Map service properties to CSV format with proper column naming\nconst data = $input.first().json;\n\n// Get current timestamp for audit fields\nconst currentTimestamp = new Date().toISOString();\n\n// Base CSV columns matching generated schema\nconst csvData = {\n  'Name': data.name,\n  'Phone': data.phone,\n  'Email': data.email,\n  'Preferred Contact Method': data.preferred_contact_method,\n  'Date': data.date,\n  'Time': data.time,\n  'Service': data.service,\n  'Duration': data.duration || '',\n  'Status': 'Confirmed',\n  'Notes': data.notes || '',\n  'Google Calendar Event ID': '', // Will be updated after calendar creation\n  'Created': currentTimestamp,\n  'Modified': currentTimestamp\n};\n\n// Service property column mapping (slug -> proper column names) - matches config.json services\nconst columnMapping = {{COLUMN_MAPPING}};\n\n// Add service-specific properties to CSV data\nif (data.service_slug && data.service_properties && columnMapping[data.service_slug]) {\n  const serviceColumns = columnMapping[data.service_slug];\n  \n  Object.keys(serviceColumns).forEach(propKey => {\n    const columnName = serviceColumns[propKey];\n    const value = data.service_properties[propKey];\n    csvData[columnName] = value !== undefined ? value : '';\n  });\n}\n\n// Create Google Calendar event description with service properties\nlet description = `Service: ${data.service}\\n`;\nif (data.service_properties && Object.keys(data.service_properties).length > 0) {\n  description += '\\nService Details:\\n';\n  Object.keys(data.service_properties).forEach(key => {\n    const value = data.service_properties[key];\n    if (value !== undefined && value !== '') {\n      const displayKey = key.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());\n      description += `${displayKey}: ${value}\\n`;\n    }\n  });\n}\nif (data.notes) {\n  description += `\\nNotes: ${data.notes}`;\n}\n\n// Add customer information to description\ndescription += `\\n--\\n\\nCustomer: ${data.name}\\nPreferred Contact: ${data.preferred_contact_method}\\nPhone: ${data.phone}\\nEmail: ${data.email}`;\n\n// Return enhanced appointment data with CSV mapping and calendar description\nreturn [{\n  json: {\n    ...data,\n    csv_data: csvData,\n    calendar_description: description\n  }\n}];"
       },
       "id": "7ad69052-82f1-4179-8df2-7f055d9df1fd",
       "name": "Map to CSV Format",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -1700,
-        -125
-      ]
+      "position": [-1700, -125]
     }
   ],
   "connections": {
