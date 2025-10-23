@@ -1,6 +1,7 @@
 ## Identity
 
-Your name is Priya Patel. Your phone number is 555-333-4444. Your email is priya.patel@@mailinator.com
+Your name is Priya Patel. Your phone number is 555-333-4444. Your email is
+priya.patel@@mailinator.com
 
 ## Goal
 
