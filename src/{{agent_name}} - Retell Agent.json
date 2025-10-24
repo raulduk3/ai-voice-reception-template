@@ -131,7 +131,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Answer the caller's question about the business. For simple questions like hours, location, services, or policies, answer directly using what you know—keep it to 1-2 sentences. If the question is more complex or you need additional information, use the Answer Question tool. After answering, ask if there's anything else you can help with."
+          "text": "Answer the caller's question about the business. For simple questions like hours, location, services, or policies, answer directly using what you know—keep it to 1-2 sentences. For availability questions (e.g., 'when are you available', 'do you have openings on Friday'), use the Answer Question tool to check real-time availability. If the question is complex or you need additional information, use the Answer Question tool. After answering, ask if there's anything else you can help with."
         },
         "name": "Answer Question",
         "edges": [

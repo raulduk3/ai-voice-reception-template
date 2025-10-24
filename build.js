@@ -625,11 +625,32 @@ class AIVoiceBuilder {
 
       console.log(`🎯 Targeting n8n instance: ${authConfig.instanceUrl}`);
 
+      // Get or create project for organization
+      let projectId = null;
+      try {
+        projectId = await this._getOrCreateProject(authConfig);
+        if (projectId) {
+          console.log(`📁 Using project: ${this.templateVariables.business_name}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️  Could not setup project: ${error.message}`);
+      }
+
+      // Cleanup old workflows first
+      if (webhookConfig.deployment?.cleanup_old_workflows !== false) {
+        try {
+          await this._cleanupOldWorkflows(authConfig, projectId);
+        } catch (error) {
+          console.warn(`⚠️  Could not cleanup old workflows: ${error.message}`);
+        }
+      }
+
       // Upload workflows with retry logic
       const uploadResults = await this._bulkUploadWorkflows(
         workflowFiles,
         webhookConfig,
-        authConfig
+        authConfig,
+        projectId
       );
 
       console.log(
@@ -747,14 +768,331 @@ class AIVoiceBuilder {
   }
 
   /**
+   * Get or create a project for organizing workflows
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string|null>} Project ID or null
+   */
+  async _getOrCreateProject(authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    const businessName = this.templateVariables.business_name;
+    
+    return new Promise((resolve, reject) => {
+      try {
+        // First, try to find existing project
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/projects`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                const projects = response.data || [];
+                
+                // Look for existing project
+                const existingProject = projects.find(project => project.name === businessName);
+                if (existingProject) {
+                  resolve(existingProject.id);
+                  return;
+                }
+
+                // Create new project
+                try {
+                  const newProjectId = await this._createProject(businessName, authConfig);
+                  resolve(newProjectId);
+                } catch (createError) {
+                  console.warn(`⚠️  Could not create project: ${createError.message}`);
+                  resolve(null);
+                }
+              } else {
+                resolve(null);
+              }
+            } catch (parseError) {
+              resolve(null);
+            }
+          });
+        });
+
+        req.on('error', () => {
+          resolve(null);
+        });
+
+        req.end();
+
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Create a new project
+   *
+   * @param {string} projectName - Name of the project to create
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string>} Project ID
+   */
+  async _createProject(projectName, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const projectData = JSON.stringify({ name: projectName });
+        
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/projects`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(projectData),
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const createdProject = JSON.parse(responseData);
+                console.log(`📁 Created new project: ${projectName}`);
+                resolve(createdProject.id);
+              } else {
+                reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse response: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(projectData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to create project: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Cleanup old workflows from n8n instance
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @param {string|null} projectId - Project ID to filter workflows
+   * @returns {Promise<Array>} Array of deleted workflow IDs
+   */
+  async _cleanupOldWorkflows(authConfig, projectId = null) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    console.log("🧹 Cleaning up old workflows...");
+
+    return new Promise((resolve, reject) => {
+      try {
+        // Get all workflows, filtered by project if provided
+        let urlPath = '/api/v1/workflows';
+        const queryParams = [];
+        if (projectId) {
+          queryParams.push(`projectId=${projectId}`);
+        }
+        if (queryParams.length > 0) {
+          urlPath += '?' + queryParams.join('&');
+        }
+        
+        const url = new URL(`${authConfig.instanceUrl}${urlPath}`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                const workflows = response.data || [];
+                
+                // Filter workflows that match our business name pattern
+                const businessName = this.templateVariables.business_name;
+                const oldWorkflows = workflows.filter(w => 
+                  w.name.startsWith(businessName + ' - ') ||
+                  w.name.startsWith(businessName + '-') ||
+                  // Fallback patterns for workflows without business prefix
+                  w.name.includes('Book Appointment') ||
+                  w.name.includes('Answer Question') ||
+                  w.name.includes('Cancel Appointment') ||
+                  w.name.includes('Modify Appointment') ||
+                  w.name.includes('Identify Appointment') ||
+                  w.name.includes('Log Lead') ||
+                  w.name.includes('Day And Time')
+                );
+
+                console.log(`📋 Found ${oldWorkflows.length} old workflows to cleanup`);
+
+                const deletedIds = [];
+                for (const workflow of oldWorkflows) {
+                  try {
+                    await this._deleteWorkflow(workflow.id, authConfig);
+                    deletedIds.push(workflow.id);
+                    console.log(`🗑️  Deleted: ${workflow.name}`);
+                  } catch (error) {
+                    console.warn(`⚠️  Could not delete workflow ${workflow.name}: ${error.message}`);
+                  }
+                }
+
+                resolve(deletedIds);
+              } else {
+                reject(new Error(`Failed to fetch workflows: HTTP ${res.statusCode} - ${responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse workflows response: ${parseError.message}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to cleanup workflows: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Delete a single workflow from n8n instance
+   *
+   * @param {string} workflowId - ID of workflow to delete
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _deleteWorkflow(workflowId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to delete workflow: ${error.message}`));
+      }
+    });
+  }
+
+  /**
    * Upload multiple workflows with retry logic
    *
    * @param {Array} workflowFiles - Array of workflow file objects
    * @param {Object} n8nConfig - n8n configuration
    * @param {Object} authConfig - Authentication configuration
+   * @param {string|null} projectId - Project ID to assign workflows to
    * @returns {Promise<Object>} Upload results
    */
-  async _bulkUploadWorkflows(workflowFiles, n8nConfig, authConfig) {
+  async _bulkUploadWorkflows(workflowFiles, n8nConfig, authConfig, projectId = null) {
     const results = {
       successful: [],
       failed: []
@@ -775,7 +1113,7 @@ class AIVoiceBuilder {
             `📤 Uploading ${workflow.name} (attempt ${attempts}/${maxAttempts})`
           );
 
-          await this._uploadSingleWorkflow(workflow, n8nConfig, authConfig);
+          await this._uploadSingleWorkflow(workflow, n8nConfig, authConfig, projectId);
 
           results.successful.push({
             name: workflow.name,
@@ -807,77 +1145,557 @@ class AIVoiceBuilder {
   }
 
   /**
-   * Upload a single workflow file to n8n
+   * Upload a single workflow file to n8n using REST API
    *
    * @param {Object} workflow - Workflow file object
    * @param {Object} n8nConfig - n8n configuration
    * @param {Object} authConfig - Authentication configuration
+   * @param {string|null} projectId - Project ID to assign workflow to
    * @returns {Promise<void>}
    */
-  async _uploadSingleWorkflow(workflow, n8nConfig, authConfig) {
-    const { spawn } = require("child_process");
+  async _uploadSingleWorkflow(workflow, n8nConfig, authConfig, projectId = null) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
 
     return new Promise((resolve, reject) => {
-      const n8nCmd = process.platform === "win32" ? "n8n.cmd" : "n8n";
-      const args = ["import:workflow", "--input", workflow.path];
-
-      // Add authentication
-      if (authConfig.api_key) {
-        args.push("--apiKey", authConfig.api_key);
-      } else if (authConfig.username && authConfig.password) {
-        args.push("--username", authConfig.username);
-        args.push("--password", authConfig.password);
-      }
-
-      if (authConfig.instanceUrl) {
-        args.push("--url", authConfig.instanceUrl);
-      }
-
-      if (n8nConfig.deployment?.overwrite_existing) {
-        args.push("--overwrite");
-      }
-
-      if (n8nConfig.deployment?.activate_workflows) {
-        args.push("--activate");
-      }
-
-      const timeout = n8nConfig.cli_options?.timeout || 30000;
-      const childProcess = spawn(n8nCmd, args, {
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: timeout
-      });
-
-      let output = "";
-      let errorOutput = "";
-
-      if (childProcess.stdout) {
-        childProcess.stdout.on("data", data => {
-          output += data.toString();
-        });
-      }
-
-      if (childProcess.stderr) {
-        childProcess.stderr.on("data", data => {
-          errorOutput += data.toString();
-        });
-      }
-
-      childProcess.on("close", code => {
-        if (code === 0) {
-          console.log(`✅ Successfully uploaded ${workflow.workflowName}`);
-          resolve();
-        } else {
-          reject(
-            new Error(
-              `n8n CLI failed with code ${code}: ${errorOutput || output}`
-            )
-          );
+      try {
+        // Read the workflow file
+        const workflowData = JSON.parse(require('fs').readFileSync(workflow.path, 'utf8'));
+        
+        // Add business name prefix to workflow name for easy identification
+        const businessName = this.templateVariables.business_name;
+        let workflowName = workflowData.name;
+        
+        // Only add prefix if it doesn't already have it
+        if (!workflowName.startsWith(businessName + ' - ')) {
+          workflowName = `${businessName} - ${workflowName}`;
         }
-      });
 
-      childProcess.on("error", error => {
-        reject(new Error(`Failed to start n8n CLI: ${error.message}`));
-      });
+        // Prepare workflow for API (remove read-only fields)
+        const apiWorkflow = {
+          name: workflowName,
+          nodes: workflowData.nodes,
+          connections: workflowData.connections,
+          settings: workflowData.settings || {}
+        };
+
+
+
+        // Convert to JSON
+        const jsonData = JSON.stringify(apiWorkflow);
+        
+        // Parse URL
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(jsonData),
+          }
+        };
+
+        // Add authentication header
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        // Choose http or https
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const createdWorkflow = JSON.parse(responseData);
+                console.log(`✅ Successfully uploaded ${workflow.workflowName} as "${workflowName}"`);
+                
+                // Add tag for organization (fallback for instances without project support)
+                if (createdWorkflow.data?.id) {
+                  try {
+                    await this._tagWorkflow(createdWorkflow.data.id, authConfig);
+                  } catch (tagError) {
+                    console.warn(`⚠️  Could not tag workflow: ${tagError.message}`);
+                  }
+                }
+                
+                // Activate workflow if requested
+                if (n8nConfig.deployment?.activate_workflows && createdWorkflow.id) {
+                  await this._activateWorkflow(createdWorkflow.id, authConfig);
+                }
+                
+                resolve();
+              } else {
+                const errorData = JSON.parse(responseData);
+                reject(new Error(`HTTP ${res.statusCode}: ${errorData.message || responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse response: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(jsonData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to upload workflow: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Transfer a workflow to a project using REST API
+   *
+   * @param {string} workflowId - ID of the workflow to transfer
+   * @param {string} projectId - ID of the project to transfer to
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _transferWorkflowToProject(workflowId, projectId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const transferData = JSON.stringify({ projectId });
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}/transfer`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(transferData),
+          }
+        };
+
+        // Add authentication header
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        // Choose http or https
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(transferData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to transfer workflow: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Activate a workflow using REST API
+   *
+   * @param {string} workflowId - ID of the workflow to activate
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _activateWorkflow(workflowId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}/activate`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              console.log(`🟢 Activated workflow ${workflowId}`);
+              resolve();
+            } else {
+              // Don't fail the entire upload if activation fails
+              console.warn(`⚠️  Could not activate workflow ${workflowId}: HTTP ${res.statusCode}`);
+              resolve();
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.warn(`⚠️  Could not activate workflow ${workflowId}: ${error.message}`);
+          resolve(); // Don't fail the upload
+        });
+
+        req.end();
+
+      } catch (error) {
+        console.warn(`⚠️  Could not activate workflow ${workflowId}: ${error.message}`);
+        resolve(); // Don't fail the upload
+      }
+    });
+  }
+
+  /**
+   * Tag a workflow for organization (folder-like structure)
+   *
+   * @param {string} workflowId - ID of the workflow to tag
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _tagWorkflow(workflowId, authConfig) {
+    try {
+      // Get or create the business tag
+      const tagId = await this._getOrCreateBusinessTag(authConfig);
+      
+      if (tagId) {
+        await this._addTagToWorkflow(workflowId, tagId, authConfig);
+      }
+    } catch (error) {
+      throw new Error(`Failed to tag workflow: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get or create a tag for the business
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string|null>} Tag ID or null
+   */
+  async _getOrCreateBusinessTag(authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    const businessName = this.templateVariables.business_name;
+    const tagName = businessName;
+
+    return new Promise((resolve, reject) => {
+      try {
+        // First, try to find existing tag
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                const tags = response.data || [];
+                
+                // Look for existing tag
+                const existingTag = tags.find(tag => tag.name === tagName);
+                if (existingTag) {
+                  console.log(`📋 Using existing tag: ${tagName}`);
+                  resolve(existingTag.id);
+                  return;
+                }
+
+                // Create new tag
+                try {
+                  const newTagId = await this._createTag(tagName, authConfig);
+                  console.log(`🏷️  Created new tag: ${tagName}`);
+                  resolve(newTagId);
+                } catch (createError) {
+                  // If tag already exists, fetch it again
+                  if (createError.message.includes('409') || createError.message.includes('already exists')) {
+                    console.log(`📋 Tag already exists: ${tagName}`);
+                    // Try to find it again (might have been created between calls)
+                    try {
+                      const retryResponse = await this._getTags(authConfig);
+                      const existingTag = retryResponse.find(tag => tag.name === tagName);
+                      resolve(existingTag ? existingTag.id : null);
+                    } catch {
+                      resolve(null);
+                    }
+                  } else {
+                    console.warn(`⚠️  Could not create tag: ${createError.message}`);
+                    resolve(null);
+                  }
+                }
+              } else {
+                resolve(null);
+              }
+            } catch (parseError) {
+              resolve(null);
+            }
+          });
+        });
+
+        req.on('error', () => {
+          resolve(null);
+        });
+
+        req.end();
+
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Get all tags from n8n instance
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<Array>} Array of tags
+   */
+  async _getTags(authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                resolve(response.data || []);
+              } else {
+                resolve([]);
+              }
+            } catch (parseError) {
+              resolve([]);
+            }
+          });
+        });
+
+        req.on('error', () => {
+          resolve([]);
+        });
+
+        req.end();
+
+      } catch (error) {
+        resolve([]);
+      }
+    });
+  }
+
+  /**
+   * Create a new tag
+   *
+   * @param {string} tagName - Name of the tag to create
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string>} Tag ID
+   */
+  async _createTag(tagName, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const tagData = JSON.stringify({ name: tagName });
+        
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(tagData),
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const createdTag = JSON.parse(responseData);
+                resolve(createdTag.id);
+              } else {
+                reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse response: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(tagData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to create tag: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Add a tag to a workflow
+   *
+   * @param {string} workflowId - ID of the workflow
+   * @param {string} tagId - ID of the tag
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _addTagToWorkflow(workflowId, tagId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const tagData = JSON.stringify([{ id: tagId }]);
+        
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(tagData),
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(tagData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to tag workflow: ${error.message}`));
+      }
     });
   }
 }

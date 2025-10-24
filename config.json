@@ -154,7 +154,8 @@
         "target_folder": "{{business_name}} Workflows",
         "overwrite_existing": true,
         "activate_workflows": true,
-        "backup_existing": false
+        "backup_existing": false,
+        "cleanup_old_workflows": true
       },
       "cli_options": {
         "timeout": 30000,
