@@ -51,7 +51,7 @@
           "optional": [
             {
               "name": "timeline_weeks",
-              "type": "number", 
+              "type": "number",
               "prompt": "desired timeline in weeks"
             }
           ]
@@ -121,6 +121,12 @@
 
   "build_config": {
     "_comment": "Direct Retell agent configuration applied at build time",
+    "token_tracking": {
+      "_comment": "Token usage analysis for LLM-facing content (prompts, tools, knowledge bases)",
+      "enabled": true,
+      "include_in_build_info": true,
+      "generate_detailed_report": true
+    },
     "version_settings": {
       "version_title_suffix": "Demo"
     },
@@ -130,23 +136,67 @@
       "interruption_sensitivity": 0.65
     },
     "infrastructure": {
-      "transfer_phone_number": "+17734699726"
+      "transfer_phone_number": "+17734699726",
+      "base_webhook_url": "https://n8n.srv836523.hstgr.cloud"
     },
-    "webhooks": {
-      "base_url": "https://n8n.srv836523.hstgr.cloud/webhook",
+    "webhook_deployment": {
+      "_comment": "Webhook and n8n deployment configuration with hash generation for unique endpoints",
+      "enabled": true,
+      "hash_algorithm": "sha256",
+      "hash_length": 8,
+      "instance_url": "https://n8n.srv836523.hstgr.cloud",
+      "credentials": {
+        "api_key": "env:N8N_API_KEY",
+        "username": "env:N8N_USERNAME",
+        "password": "env:N8N_PASSWORD"
+      },
+      "deployment": {
+        "target_folder": "{{business_name}} Workflows",
+        "overwrite_existing": true,
+        "activate_workflows": true,
+        "backup_existing": false,
+        "cleanup_old_workflows": true
+      },
+      "cli_options": {
+        "timeout": 30000,
+        "retry_attempts": 3,
+        "verbose": true
+      },
       "tools": {
-        "bookAppointment": "bookAppointment",
-        "answerQuestion": "answerQuestion",
-        "logLead": "logLead",
-        "identifyAppointment": "identifyAppointment",
-        "modifyAppointment": "modifyAppointment",
-        "cancelAppointment": "cancelAppointment",
-        "dayAndTime": "dayAndTime"
+        "_comment": "Tool definitions for webhook endpoint generation - hash will be appended",
+        "bookAppointment": {
+          "endpoint_base": "book-appointment",
+          "description": "Book new appointments"
+        },
+        "answerQuestion": {
+          "endpoint_base": "answer-question",
+          "description": "Answer customer questions using RAG"
+        },
+        "logLead": {
+          "endpoint_base": "log-lead",
+          "description": "Log customer leads and inquiries"
+        },
+        "identifyAppointment": {
+          "endpoint_base": "identify-appointment",
+          "description": "Identify existing appointments"
+        },
+        "modifyAppointment": {
+          "endpoint_base": "modify-appointment",
+          "description": "Modify existing appointments"
+        },
+        "cancelAppointment": {
+          "endpoint_base": "cancel-appointment",
+          "description": "Cancel existing appointments"
+        },
+        "dayAndTime": {
+          "endpoint_base": "day-and-time",
+          "description": "Get current day and time"
+        }
       }
     }
   },
 
-    "runtime_variables": {
+  "runtime_variables": {
     "_comment": "Variables injected into default_dynamic_variables for Retell runtime replacement in prompts. These are merged with template variables (build_date, version, etc.). Config values override defaults.",
     "business_name": "Richard Álvarez Sole Proprietor",
     "business_description": "Freelance Web Developer & AI Engineer",

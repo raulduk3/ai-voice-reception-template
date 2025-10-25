@@ -2,182 +2,237 @@ const fs = require("fs").promises;
 const path = require("path");
 const prettier = require("prettier");
 
+// Load environment variables if .env file exists
+try {
+  const dotenv = require("dotenv");
+  dotenv.config();
+} catch (error) {
+  console.log("Note: dotenv not found, using system environment variables");
+}
+
+// Import modular components
+const {
+  ConfigurationLoader,
+  ServiceSchemaEngine,
+  WebhookGenerator,
+  PromptInjector,
+  RuntimeVariableBuilder,
+  N8nWorkflowProcessor,
+  RetellAgentProcessor,
+  TemplateProcessor,
+  TokenCounter
+} = require("./lib");
+
 /**
- * Layer 7 AI Voice Receptionist Template Build System
- * 
- * This build system transforms generic templates into client-specific deployments using a sophisticated
- * multi-phase configuration approach. It processes templates, injects prompts, manages webhooks, and
- * generates optimized files for deployment.
- * 
- * ARCHITECTURE OVERVIEW:
- * =====================
- * 1. Configuration Loading: Loads and processes client configuration from config.json
- * 2. Four-Phase Processing: Template vars → Build config → Runtime vars → Client data  
- * 3. File Processing: Different strategies for different file types (prompts, JSON, etc.)
- * 4. Prompt Injection: Markdown prompts automatically injected into agent and workflows
- * 5. Service Schema Injection: Business services automatically added to booking tools
- * 6. Webhook Templating: Dynamic URL generation per tool with environment support
- * 
- * CONFIGURATION PHASES:
- * ====================
- * Phase 1: Template Variables (build-time)
- *   - Basic metadata: build_date, version, repository_name
- *   - Business identity: business_name, agent_name
- *   - Used for: filenames, build timestamps
- * 
- * Phase 2: Build Configuration (direct agent settings)
- *   - Voice settings: voice_id, call duration, interruption sensitivity  
- *   - Infrastructure: transfer phone, webhook URLs
- *   - Applied to: Retell agent JSON directly
- * 
- * Phase 3: Runtime Variables (Retell dynamic variables)
- *   - Conversation variables: business hours, appointment types
- *   - Merged with Phase 1 for Retell's {{variable}} system
- *   - Applied to: default_dynamic_variables in Retell agent
- * 
- * Phase 4: Client Data Variables (content generation)
- *   - Structured business data: services, FAQ, policies
- *   - Applied to: knowledge base, CSV files, test scenarios
- * 
- * FILE PROCESSING STRATEGIES:
- * ===========================
- * - Retell Agent JSON: Complex multi-phase processing with prompt injection
- * - n8n Workflows: Template replacement + RAG prompt injection for answerQuestion
- * - Prompt Files: Preserve {{variables}} for Retell runtime processing
- * - Content Files: Full template variable replacement (knowledge base, CSV, tests)
- * - Other Files: Standard template processing with optimization
+ * Layer 7 AI Voice Receptionist Template Build System (Modular Architecture)
+ *
+ * This build system uses a modular architecture with independent components
+ * that communicate through well-defined interfaces. Each module can be tested in isolation
+ * and composed for complete builds.
+ *
+ * MODULAR ARCHITECTURE:
+ * ===================
+ * - ConfigurationLoader: Loads and validates config.json
+ * - RuntimeVariableBuilder: Builds all four phases of template variables
+ * - ServiceSchemaEngine: Generates service-specific JSON schemas
+ * - WebhookGenerator: Creates unique webhook URLs with hashes
+ * - PromptInjector: Loads and injects markdown prompts
+ * - RetellAgentProcessor: Processes Retell agent JSON
+ * - N8nWorkflowProcessor: Processes n8n workflow JSON
+ * - TemplateProcessor: Orchestrates file-type routing
+ *
  */
 class AIVoiceBuilder {
   constructor() {
-    // Core directories for source and output files
+    // Core directories
     this.sourceDir = "src/";
     this.distDir = "dist";
-    
-    // Configuration objects populated during initialization
-    this.prettierConfig = null;
+
+    // Module instances
+    this.configLoader = new ConfigurationLoader();
+    this.variableBuilder = new RuntimeVariableBuilder();
+    this.serviceEngine = new ServiceSchemaEngine();
+    this.webhookGenerator = new WebhookGenerator();
+    this.promptInjector = new PromptInjector(this.distDir);
+    this.retellProcessor = new RetellAgentProcessor();
+    this.workflowProcessor = new N8nWorkflowProcessor();
+    this.templateProcessor = new TemplateProcessor();
+    this.tokenCounter = new TokenCounter();
+
+    // Configuration state (populated during init)
     this.config = null;
-    
-    // Four-phase configuration variables (see architecture overview above)
-    this.templateVariables = {};      // Phase 1: Build-time template vars
-    this.buildConfig = {};            // Phase 2: Direct agent settings  
-    this.runtimeVariables = {};       // Phase 3: Retell dynamic variables
-    this.clientDataVariables = {};    // Phase 4: Content generation vars
-    
-    // Injected prompts (loaded after prompt files are processed)
-    this.corePrompt = null;           // Global prompt for Retell agent
-    this.ragPrompt = null;            // RAG prompt for answerQuestion workflow
+    this.prettierConfig = null;
+
+    // Backward compatibility: expose traditional properties
+    this.templateVariables = {};
+    this.buildConfig = {};
+    this.runtimeVariables = {};
+    this.clientDataVariables = {};
+    this.webhookUrls = {};
+    this.webhookHashes = {};
   }
 
   /**
    * Initialize the build system
-   * 
-   * This method sets up the build environment by:
-   * 1. Loading Prettier configuration for code formatting
-   * 2. Loading and processing client configuration (4-phase system)
-   * 3. Creating the output directory structure
-   * 4. Displaying initialization summary
+   *
+   * This method:
+   * 1. Loads Prettier configuration
+   * 2. Loads and processes configuration
+   * 3. Initializes all modules with their dependencies
+   * 4. Creates output directory structure
    */
   async init() {
-    console.log("🚀 Layer 7 AI Voice Build System Initializing...");
-    
-    // Load Prettier configuration for consistent code formatting
+    console.log(
+      "🚀 Layer 7 AI Voice Build System Initializing (Modular Architecture)..."
+    );
+
+    // Load Prettier configuration
     this.prettierConfig = await prettier.resolveConfig(".");
-    
-    // Load and process client configuration through 4-phase system
-    await this.loadAndProcessConfiguration();
-    
-    // Ensure output directory exists
+
+    // Load configuration
+    this.config = await this.configLoader.loadConfiguration();
+
+    // Build all variable phases
+    const packageJson = require("./package.json");
+    const repoName = packageJson.name || "ai-voice-reception";
+
+    // Initialize service engine first (needed for Phase 4 variables)
+    const clientData = this.config.client_data || {};
+    if (clientData.services) {
+      this.serviceEngine.initialize(
+        clientData.services,
+        clientData.service_constraints
+      );
+    }
+
+    // Build all phases with service engine for advanced schema generation
+    const allPhases = this.variableBuilder.buildAllPhases(
+      this.config,
+      packageJson,
+      repoName,
+      this.serviceEngine
+    );
+
+    // Store for backward compatibility
+    this.templateVariables = allPhases.templateVariables;
+    this.buildConfig = allPhases.buildConfig;
+    this.runtimeVariables = allPhases.runtimeVariables;
+    this.clientDataVariables = allPhases.clientDataVariables;
+
+    // Initialize webhook generator
+    const webhookConfig = {
+      base_webhook_url: this.buildConfig.infrastructure.base_webhook_url,
+      hash_algorithm: this.buildConfig.webhook_deployment.hash_algorithm,
+      hash_length: this.buildConfig.webhook_deployment.hash_length,
+      tools: this.buildConfig.webhook_deployment.tools,
+      business_name: this.templateVariables.business_name
+    };
+
+    this.webhookGenerator.initialize(webhookConfig);
+    this.webhookHashes = this.webhookGenerator.generateWebhookHashes();
+    this.webhookUrls = this.webhookGenerator.buildWebhookUrls();
+
+    // Initialize prompt injector
+    this.promptInjector.initialize(
+      this.templateVariables.business_name,
+      this.distDir
+    );
+
+    // Initialize retell processor with service engine
+    this.retellProcessor.initialize(this.serviceEngine);
+
+    // Initialize template processor
+    const allVariables = {
+      ...this.templateVariables,
+      ...this.clientDataVariables
+    };
+
+    this.templateProcessor.initialize(
+      {
+        retellAgentProcessor: this.retellProcessor,
+        n8nWorkflowProcessor: this.workflowProcessor
+      },
+      allVariables
+    );
+
+    // Create output directory
     await this.ensureDir(this.distDir);
-    
-    // Display initialization summary
-    console.log("✅ Layer 7 AI Voice Build System Initialized");
-    console.log(`📋 Business: ${this.templateVariables.business_name}`);
-    console.log(`🎯 Agent: ${this.templateVariables.agent_name}`);
-    console.log(`📦 Version: ${this.templateVariables.version}`);
+
+    console.log("✅ Build system initialized");
+    console.log(`📦 Business: ${this.templateVariables.business_name}`);
+    console.log(`🤖 Agent: ${this.templateVariables.agent_name}`);
+    console.log(
+      `🔗 Webhook base: ${this.buildConfig.infrastructure.base_webhook_url}`
+    );
+
+    if (clientData.services) {
+      console.log(`📋 Services: ${clientData.services.length} configured`);
+    }
   }
 
   /**
    * Ensure a directory exists, creating it if necessary
-   * 
+   *
    * @param {string} dirPath - Absolute path to directory
    */
   async ensureDir(dirPath) {
     try {
-      await fs.access(dirPath);
-    } catch {
       await fs.mkdir(dirPath, { recursive: true });
-      console.log(`📁 Created directory: ${dirPath}`);
+    } catch (error) {
+      // Directory might already exist
     }
   }
 
   /**
    * Process a single file through the template system
-   * 
-   * This method handles file processing with:
-   * 1. Template content processing (file-type specific)
-   * 2. Code formatting and optimization (JSON minification, Markdown formatting)
-   * 3. Output generation with size reduction tracking
-   * 
+   *
    * @param {string} filePath - Source file path
    * @param {string} outputPath - Destination file path
-   * @returns {Object} Processing statistics (original size, processed size, reduction %)
+   * @returns {Object} Processing statistics
    */
   async processFile(filePath, outputPath) {
     try {
-      const content = await fs.readFile(filePath, "utf8");
-      const ext = path.extname(filePath).toLowerCase();
+      // Read source file
+      const content = await fs.readFile(filePath, "utf-8");
+      const originalSize = Buffer.byteLength(content, "utf8");
 
-      // Process content using file-type specific strategy
-      let processedContent = this.processTemplateContent(content, filePath);
-      let reduction = 0;
-      let countsTowardReduction = false;
+      // Process content through template processor
+      const context = this._buildProcessingContext();
+      const processedContent = this.templateProcessor.processFile(
+        filePath,
+        content,
+        context
+      );
 
-      // Apply file-type specific formatting and optimization
-      if (ext === ".json") {
-        try {
-          // Format JSON with Prettier, then minify for production
-          const formatted = await prettier.format(processedContent, {
-            ...this.prettierConfig,
-            parser: "json"
-          });
-          processedContent = JSON.stringify(JSON.parse(formatted));
-          countsTowardReduction = true;
-          reduction = (
-            ((content.length - processedContent.length) / content.length) *
-            100
-          ).toFixed(1);
-        } catch (err) {
-          console.warn(`⚠️ JSON processing issue in ${filePath}: ${err.message}`);
-          countsTowardReduction = false;
-          reduction = 0;
-        }
-      } else if (ext === ".md") {
-        try {
-          // Format markdown with Prettier (no minification for readability)
-          processedContent = await prettier.format(processedContent, {
-            ...this.prettierConfig,
-            parser: "markdown"
-          });
-          reduction = 0;
-          countsTowardReduction = false;
-        } catch (err) {
-          reduction = 0;
-          countsTowardReduction = false;
-        }
-      } else {
-        // CSV and other files: template processing only
-        reduction = 0;
-        countsTowardReduction = false;
-      }
+      // Format and optimize output
+      const optimizedContent = await this._optimizeContent(
+        processedContent,
+        outputPath
+      );
 
-      // Write processed content to output file
-      await fs.writeFile(outputPath, processedContent, "utf8");
+      const processedSize = Buffer.byteLength(optimizedContent, "utf8");
+
+      // Ensure output directory exists
+      await this.ensureDir(path.dirname(outputPath));
+
+      // Write processed file
+      await fs.writeFile(outputPath, optimizedContent, "utf-8");
+
+      // Calculate size reduction
+      const reduction =
+        originalSize > 0
+          ? (((originalSize - processedSize) / originalSize) * 100).toFixed(1)
+          : 0;
+
+      console.log(
+        `  ✓ ${path.basename(filePath)} → ${path.basename(outputPath)} ` +
+          `(${reduction}% reduction)`
+      );
 
       return {
-        original: content.length,
-        processed: processedContent.length,
-        reduction,
-        countsTowardReduction
+        originalSize,
+        processedSize,
+        reduction: parseFloat(reduction)
       };
     } catch (error) {
       console.error(`❌ Error processing ${filePath}:`, error.message);
@@ -186,1379 +241,86 @@ class AIVoiceBuilder {
   }
 
   /**
-   * Copy a file from source to destination (utility method)
-   * 
-   * @param {string} source - Source file path  
-   * @param {string} destination - Destination file path
+   * Build complete processing context for template processor
+   *
+   * @returns {Object} Processing context with all dependencies
    */
-  async copyFile(source, destination) {
-    await fs.copyFile(source, destination);
-  }
-
-  // ============================================================================
-  // CONFIGURATION LOADING AND PROCESSING (Four-Phase System)
-  // ============================================================================
-
-  /**
-   * Load and process client configuration using the four-phase system
-   * 
-   * PHASE 1: Template Variables (build-time)
-   * PHASE 2: Build Configuration (direct agent settings)
-   * PHASE 3: Runtime Variables (Retell dynamic variables)
-   * PHASE 4: Client Data Variables (content generation)
-   * 
-   * This method orchestrates the entire configuration loading process and sets up
-   * all four phases of variables used throughout the build system.
-   */
-  async loadAndProcessConfiguration() {
-    try {
-      console.log("📖 Loading client configuration...");
-      
-      // Load raw configuration from config.json
-      const raw = await fs.readFile(path.join(process.cwd(), "config.json"), "utf8");
-      this.config = JSON.parse(raw);
-      
-      // Load package.json for build metadata
-      const packageJson = require("./package.json");
-      const repoName = (packageJson.name || "ai-voice-receptionist").replace(/@.*\//, "");
-      
-      // PHASE 1: Template Variables (build-time metadata and basic templating)
-      this.templateVariables = this.buildTemplateVariables(packageJson, repoName);
-      
-      // PHASE 2: Build Configuration (direct Retell agent settings)
-      this.buildConfig = this.buildConfigurationSettings();
-      
-      // PHASE 3: Runtime Variables (Retell dynamic variables for conversations)
-      this.runtimeVariables = this.buildRuntimeVariables();
-      
-      // PHASE 4: Client Data Variables (structured business data for content generation)
-      this.clientDataVariables = this.processClientData(this.config.client_data || {});
-      
-      console.log("✅ Configuration processed successfully");
-      console.log(`📋 Template Variables: ${Object.keys(this.templateVariables).join(", ")}`);
-      
-    } catch (error) {
-      console.warn("⚠️ Could not load configuration, using defaults:", error.message);
-      this.setDefaultConfiguration();
-    }
-    
-    // Load prompts after template variables are established
-    await this.loadPrompts();
-  }
-
-  /**
-   * PHASE 1: Build Template Variables (build-time metadata and basic templating)
-   * 
-   * These variables are used for:
-   * - File naming ({{business_name}}, {{agent_name}})  
-   * - Build metadata (build_date, version, repository_name)
-   * - Basic template replacement in content files
-   * 
-   * @param {Object} packageJson - Package.json contents
-   * @param {string} repoName - Repository name  
-   * @returns {Object} Template variables object
-   */
-  buildTemplateVariables(packageJson, repoName) {
-    const businessName = this.generateBusinessName(repoName);
-    
+  _buildProcessingContext() {
     return {
-      build_date: new Date().toISOString(),
-      repository_name: repoName,
-      version: packageJson.version || "1.0.0",
-      ...(this.config.templating?.variables || {
-        business_name: businessName,
-        agent_name: "Your Business AI Voice Receptionist"
-      })
+      businessName: this.templateVariables.business_name,
+      templateVariables: this.templateVariables,
+      buildConfig: this.buildConfig,
+      runtimeVariables: this.runtimeVariables,
+      clientDataVariables: this.clientDataVariables,
+      corePrompt: this.promptInjector.getCorePrompt(),
+      ragPrompt: this.promptInjector.getRAGPrompt(),
+      services: this.config?.client_data?.services || [],
+      webhookUrls: this.webhookUrls,
+      webhookHashes: this.webhookHashes,
+      webhookConfig: this.webhookGenerator.getDeploymentConfig().tools,
+      transferPhoneNumber: this.buildConfig.infrastructure.transfer_phone_number
     };
   }
 
   /**
-   * PHASE 2: Build Configuration Settings (direct Retell agent settings)
-   * 
-   * These settings are applied directly to the Retell agent JSON:
-   * - Voice settings (voice_id, call duration, interruption sensitivity)
-   * - Infrastructure (transfer phone numbers, webhook URLs)
-   * - Version settings (title suffix for agent versions)
-   * 
-   * @returns {Object} Build configuration object
+   * Optimize content based on file type
+   *
+   * @param {string} content - Processed content
+   * @param {string} outputPath - Output file path
+   * @returns {string} Optimized content
    */
-  buildConfigurationSettings() {
-    return {
-      version_settings: this.config.build_config?.version_settings || {
-        version_title_suffix: "Demo"
-      },
-      voice_settings: this.config.build_config?.voice_settings || {
-        voice_id: "11labs-Cimo",
-        max_call_duration_ms: 600000,
-        interruption_sensitivity: 0.9
-      },
-      infrastructure: this.config.build_config?.infrastructure || {
-        transfer_phone_number: "+1234567890"
-      },
-      webhooks: this.config.build_config?.webhooks || {
-        base_url: "https://n8n.srv836523.hstgr.cloud/webhook",
-        tools: {}
-      }
-    };
-  }
+  async _optimizeContent(content, outputPath) {
+    const ext = path.extname(outputPath);
 
-  /**
-   * PHASE 3: Build Runtime Variables (Retell dynamic variables for conversations)
-   * 
-   * These variables are injected into the Retell agent's default_dynamic_variables
-   * and are available for {{variable}} replacement during conversations:
-   * - Business information (name, hours, phone)
-   * - Agent settings (support hours, transfer numbers)
-   * - Merged with template variables for complete context
-   * 
-   * @returns {Object} Runtime variables object
-   */
-  buildRuntimeVariables() {
-    const defaultRuntimeVars = {
-      build_date: this.templateVariables.build_date,
-      repository_name: this.templateVariables.repository_name,
-      version: this.templateVariables.version,
-      business_name: this.templateVariables.business_name,
-      agent_name: this.templateVariables.agent_name,
-      ai_support_hours: "24/7",
-      transfer_phone_number: this.buildConfig.infrastructure.transfer_phone_number,
-      business_description: this.config.client_data?.business_info?.description || "Professional services"
-    };
-    
-    return {
-      ...defaultRuntimeVars,
-      ...(this.config.runtime_variables || {})
-    };
-  }
-
-  /**
-   * Set default configuration when config.json cannot be loaded
-   * 
-   * Provides sensible defaults for all four configuration phases to ensure
-   * the build system can function even without a configuration file.
-   */
-  setDefaultConfiguration() {
-    const buildDate = new Date().toISOString();
-    
-    // PHASE 1: Default template variables
-    this.templateVariables = {
-      build_date: buildDate,
-      repository_name: "ai-voice-receptionist",
-      version: "1.0.0",
-      business_name: "Your Business",
-      agent_name: "Your Business AI Voice Receptionist"
-    };
-    
-    // PHASE 2: Default build configuration
-    this.buildConfig = {
-      version_settings: { version_title_suffix: "Demo" },
-      voice_settings: {
-        voice_id: "11labs-Cimo",
-        max_call_duration_ms: 600000,
-        interruption_sensitivity: 0.9
-      },
-      infrastructure: { transfer_phone_number: "+1234567890" },
-      webhooks: {
-        base_url: "https://n8n.srv836523.hstgr.cloud/webhook",
-        tools: {}
-      }
-    };
-    
-    // PHASE 3: Default runtime variables
-    this.runtimeVariables = {
-      build_date: buildDate,
-      repository_name: "ai-voice-receptionist",
-      version: "1.0.0",
-      business_name: "Your Business",
-      agent_name: "Your Business AI Voice Receptionist",
-      ai_support_hours: "24/7",
-      transfer_phone_number: "+1234567890"
-    };
-    
-    // PHASE 4: Default client data variables
-    this.clientDataVariables = {};
-    this.config = {};
-  }
-
-  // ============================================================================
-  // PROMPT LOADING AND INJECTION SYSTEM
-  // ============================================================================
-
-  /**
-   * Load processed prompts from dist directory for injection into configurations
-   * 
-   * This method loads the already-processed prompt files from the dist directory
-   * after they have been templated and writes to inject them into:
-   * - Core Prompt: Injected into Retell agent's global_prompt
-   * - RAG Prompt: Injected into answerQuestion n8n workflow's system message
-   * 
-   * Note: Prompts are loaded from dist (not src) because they need to be processed
-   * with template variables before injection into other configurations.
-   */
-  async loadPrompts() {
     try {
-      // Load core prompt (for Retell agent global_prompt) from dist directory
-      const corePromptPath = this.processTemplateFilename(
-        "dist/prompts/{{business_name}} Core Prompt.md"
-      );
-      this.corePrompt = await fs.readFile(corePromptPath, "utf8");
-
-      // Load RAG prompt (for answerQuestion n8n workflow) from dist directory  
-      const ragPromptPath = this.processTemplateFilename(
-        "dist/prompts/{{business_name}} Answer Question - RAG Agent Prompt.md"
-      );
-      this.ragPrompt = await fs.readFile(ragPromptPath, "utf8");
-
-      console.log("📝 Prompts loaded successfully for injection");
-    } catch (error) {
-      console.warn("⚠️ Could not load prompts:", error.message);
-      this.corePrompt = null;
-      this.ragPrompt = null;
-    }
-  }
-
-  // ============================================================================
-  // BUSINESS NAME GENERATION AND CLIENT DATA PROCESSING  
-  // ============================================================================
-
-  /**
-   * Generate a human-readable business name from repository name
-   * 
-   * Transforms technical repository names into proper business names by:
-   * 1. Replacing hyphens/underscores with spaces
-   * 2. Removing technical terms (ai, voice, receptionist, etc.)
-   * 3. Converting to proper title case
-   * 4. Providing fallback for edge cases
-   * 
-   * @param {string} repoName - Repository name from package.json
-   * @returns {string} Formatted business name
-   */
-  generateBusinessName(repoName) {
-    return (
-      repoName
-        .replace(/[-_]/g, " ") // Replace hyphens and underscores with spaces
-        .replace(/\b(ai|voice|receptionist|agent|bot|assistant)\b/gi, "") // Remove technical terms
-        .replace(/\s+/g, " ") // Clean up multiple spaces
-        .trim()
-        .split(" ")
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Title case
-        .join(" ") || "Your Business" // Fallback
-    );
-  }
-
-  /**
-   * PHASE 4: Process Client Data into Template Variables (content generation)
-   * 
-   * Transforms structured client data from config.json into template variables
-   * used for generating knowledge base content, CSV files, and test scenarios.
-   * 
-   * This method processes:
-   * - Business information (email, phone, website, address, description)
-   * - Services list (formatted for markdown and CSV)
-   * - Business hours (formatted for display)
-   * - Booking information (policies, payment methods, instructions)
-   * - FAQ entries (formatted for knowledge base)
-   * - Business policies (cancellation, refund, etc.)
-   * 
-   * @param {Object} clientData - Raw client data from config.json
-   * @returns {Object} Processed template variables for content generation
-   */
-  processClientData(clientData) {
-    // Transform client_data from config into template variables for knowledge base & sheets
-    const variables = {};
-
-    // Business Info
-    if (clientData.business_info) {
-      const info = clientData.business_info;
-      variables.client_email = info.email || "";
-      variables.client_phone = info.phone || "";
-      variables.client_website = info.website || "";
-      variables.client_timezone = info.timezone || "America/Chicago";
-      variables.client_description = info.description || "";
-
-      // Address formatting
-      if (info.address) {
-        const addr = info.address;
-        if (addr.street) {
-          variables.client_location =
-            `${addr.street}, ${addr.city}, ${addr.state} ${addr.zip}`.trim();
-        } else {
-          variables.client_location = addr.city || "Remote";
-        }
-      } else {
-        variables.client_location = "Remote";
+      // JSON files: minify for size reduction
+      if (ext === ".json") {
+        const parsed = JSON.parse(content);
+        return JSON.stringify(parsed); // Minified JSON
       }
-    }
 
-    // Services List (formatted for markdown with service properties)
-    if (clientData.services && clientData.services.length > 0) {
-      // Generate appointment_types as a comma-separated list of service names
-      variables.appointment_types = clientData.services
-        .map(service => service.name)
-        .join(', ');
-        
-      variables.services_list = clientData.services
-        .map(service => {
-          let line = `- **${service.name}** (${service.duration_minutes} minutes)`;
-          if (service.description) {
-            line += `\n  ${service.description}`;
-          }
-          if (service.price) {
-            line += ` - ${service.price}`;
-          }
-          
-          // Add service properties information
-          if (service.properties) {
-            line += `\n  **Required Information:**`;
-            
-            // Required properties
-            if (service.properties.required && service.properties.required.length > 0) {
-              const requiredProps = service.properties.required
-                .map(prop => prop.prompt)
-                .join(', ');
-              line += ` ${requiredProps}`;
-            }
-            
-            // Optional properties
-            if (service.properties.optional && service.properties.optional.length > 0) {
-              const optionalProps = service.properties.optional
-                .map(prop => prop.prompt)
-                .join(', ');
-              line += `\n  **Optional Information:** ${optionalProps}`;
-            }
-          }
-          
-          return line;
-        })
-        .join("\n");
-
-      // Services as CSV rows (enhanced with individual property columns)
-      const allPropertyColumns = new Set();
-      
-      // First pass: collect all unique property names across all services
-      clientData.services.forEach(service => {
-        const required = service.properties?.required || [];
-        const optional = service.properties?.optional || [];
-        [...required, ...optional].forEach(prop => {
-          const displayName = prop.name
-            .split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          allPropertyColumns.add(displayName);
-        });
-      });
-      
-      const sortedPropertyColumns = Array.from(allPropertyColumns).sort();
-      
-      // Generate CSV header for services with property columns
-      const serviceHeaders = ['Service Type', 'Duration (minutes)', 'Price', ...sortedPropertyColumns];
-      variables.services_csv_headers = serviceHeaders.join(',');
-      
-      // Second pass: generate rows with data for each service
-      const servicesWithPropertyData = clientData.services.map(service => {
-        const baseData = [service.name, service.duration_minutes, service.price || ''];
-        
-        // Create property lookup for this service
-        const serviceProps = new Map();
-        const required = service.properties?.required || [];
-        const optional = service.properties?.optional || [];
-        [...required, ...optional].forEach(prop => {
-          const displayName = prop.name
-            .split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          // Store property info for this service
-          serviceProps.set(displayName, {
-            type: prop.type,
-            prompt: prop.prompt,
-            required: required.includes(prop)
-          });
-        });
-        
-        // Add data for each property column
-        const propertyData = sortedPropertyColumns.map(columnName => {
-          if (serviceProps.has(columnName)) {
-            const prop = serviceProps.get(columnName);
-            const requiredFlag = prop.required ? ' (Required)' : ' (Optional)';
-            return `${prop.type}${requiredFlag}`;
-          } else {
-            return ''; // Empty for properties this service doesn't have
-          }
-        });
-        
-        return [...baseData, ...propertyData].join(',');
-      });
-      
-      variables.services_csv = servicesWithPropertyData.join('\n');
-      
-      // Generate detailed service properties documentation
-      const servicePropertiesRows = [];
-      clientData.services.forEach(service => {
-        const required = service.properties?.required || [];
-        const optional = service.properties?.optional || [];
-        
-        [...required, ...optional].forEach(prop => {
-          const isRequired = required.includes(prop);
-          servicePropertiesRows.push([
-            service.name,
-            service.slug,
-            prop.name,
-            prop.type,
-            isRequired ? 'Required' : 'Optional',
-            `"${prop.prompt}"`
-          ].join(','));
-        });
-      });
-      
-      variables.service_properties_csv = servicePropertiesRows.length > 0 
-        ? servicePropertiesRows.join('\n')
-        : '';
-
-      // Dynamic CSV columns for appointments based on service properties
-      const appointmentColumns = this.generateAppointmentCSVColumns(clientData.services);
-      variables.appointment_csv_headers = appointmentColumns.join(",");
-      
-      // Generate service properties guide for agent awareness
-      variables.SERVICE_PROPERTIES_GUIDE = this.generateServicePropertiesGuide(clientData.services);
-      
-      console.log(`✅ Generated dynamic CSV schema with ${appointmentColumns.length} columns`);
-    } else {
-      variables.appointment_types = "General Services";
-      variables.services_list = "No services configured.";
-      variables.services_csv_headers = "Service Type,Duration (minutes),Price";
-      variables.services_csv = "";
-      variables.appointment_csv_headers = "Name,Phone,Email,Date,Time,Service,Duration,Status,Notes,Created,Modified";
-      variables.service_properties_csv = "";
-      variables.SERVICE_PROPERTIES_GUIDE = "No service-specific properties configured.";
-    }
-
-    // Business Hours
-    if (clientData.business_hours) {
-      const hours = clientData.business_hours;
-      variables.business_hours_display =
-        hours.display || this.formatBusinessHours(hours);
-      variables.business_hours_notes = hours.notes || "";
-    } else {
-      variables.business_hours_display = "Please contact us for hours.";
-      variables.business_hours_notes = "";
-    }
-
-    // Booking Info
-    if (clientData.booking) {
-      variables.booking_advance_notice =
-        clientData.booking.advance_notice_required || "24 hours";
-      variables.cancellation_policy =
-        clientData.booking.cancellation_policy ||
-        "Please contact us for our cancellation policy.";
-      variables.booking_instructions =
-        clientData.booking.booking_instructions ||
-        "Contact us to schedule an appointment.";
-
-      if (
-        clientData.booking.payment_methods &&
-        clientData.booking.payment_methods.length > 0
-      ) {
-        variables.payment_methods =
-          clientData.booking.payment_methods.join(", ");
-      } else {
-        variables.payment_methods = "";
-      }
-    }
-
-    // FAQ List
-    if (clientData.faq && clientData.faq.length > 0) {
-      variables.faq_list = clientData.faq
-        .map(item => `**Q: ${item.question}**\nA: ${item.answer}`)
-        .join("\n\n");
-    } else {
-      variables.faq_list = "Please contact us with any questions.";
-    }
-
-    // Policies
-    if (clientData.policies) {
-      const policySections = [];
-      if (clientData.policies.no_show_policy) {
-        policySections.push(
-          `**No-Show Policy:** ${clientData.policies.no_show_policy}`
-        );
-      }
-      if (clientData.policies.late_arrival_policy) {
-        policySections.push(
-          `**Late Arrival:** ${clientData.policies.late_arrival_policy}`
-        );
-      }
-      if (clientData.policies.refund_policy) {
-        policySections.push(
-          `**Refunds:** ${clientData.policies.refund_policy}`
-        );
-      }
-      variables.policies_section =
-        policySections.length > 0
-          ? policySections.join("\n\n")
-          : "No additional policies at this time.";
-    } else {
-      variables.policies_section = "No additional policies at this time.";
-    }
-
-    return variables;
-  }
-
-  /**
-   * Format business hours from individual day entries into display format
-   * 
-   * Converts structured business hours object into formatted markdown display
-   * suitable for knowledge base and customer-facing materials.
-   * 
-   * @param {Object} hours - Business hours object with day names as keys
-   * @returns {string} Formatted business hours display
-   */
-  formatBusinessHours(hours) {
-    // Generate a formatted display of business hours from individual day entries
-    const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-    const formatted = days
-      .map(day => {
-        const dayName = day.charAt(0).toUpperCase() + day.slice(1);
-        const dayHours = hours[day] || "Closed";
-        return `**${dayName}:** ${dayHours}`;
-      })
-      .join("\n");
-    return formatted;
-  }
-
-  // ============================================================================
-  // DYNAMIC SERVICE PROPERTY SYSTEM (Schema Generation and Validation)
-  // ============================================================================
-
-  /**
-   * Validate service configuration against constraints
-   * 
-   * Ensures the service configuration doesn't exceed system limits for:
-   * - Maximum number of services
-   * - Maximum required properties per service  
-   * - Maximum optional properties per service
-   * - Maximum total dynamic columns across all services
-   * 
-   * @param {Array} services - Services array from config.json
-   * @param {Object} constraints - Service constraints from config.json
-   * @throws {Error} If constraints are violated
-   */
-  validateServiceConstraints(services, constraints) {
-    const defaults = {
-      max_services: 8,
-      max_required_properties_per_service: 3,
-      max_optional_properties_per_service: 2,
-      max_total_dynamic_columns: 40
-    };
-    
-    const limits = { ...defaults, ...constraints };
-    
-    if (services.length > limits.max_services) {
-      throw new Error(`Too many services: ${services.length} (max: ${limits.max_services})`);
-    }
-    
-    let totalColumns = 0;
-    
-    for (const service of services) {
-      const required = service.properties?.required || [];
-      const optional = service.properties?.optional || [];
-      
-      if (required.length > limits.max_required_properties_per_service) {
-        throw new Error(`Service "${service.name}" has too many required properties: ${required.length} (max: ${limits.max_required_properties_per_service})`);
-      }
-      
-      if (optional.length > limits.max_optional_properties_per_service) {
-        throw new Error(`Service "${service.name}" has too many optional properties: ${optional.length} (max: ${limits.max_optional_properties_per_service})`);
-      }
-      
-      totalColumns += required.length + optional.length;
-    }
-    
-    if (totalColumns > limits.max_total_dynamic_columns) {
-      throw new Error(`Total dynamic properties exceed limit: ${totalColumns} (max: ${limits.max_total_dynamic_columns})`);
-    }
-  }
-
-  /**
-   * Generate service-specific properties schema for function tools
-   * 
-   * Creates a nested object schema where each service has its own properties
-   * section with required and optional fields. Used for bookAppointment and
-   * modifyAppointment function schemas.
-   * 
-   * @param {Array} services - Services array from config.json
-   * @returns {Object} Service properties schema object
-   */
-  generateServicePropertiesSchema(services) {
-    const schema = {};
-    
-    for (const service of services) {
-      const serviceSchema = {
-        type: "object",
-        properties: {},
-        required: []
-      };
-      
-      // Add required properties
-      const required = service.properties?.required || [];
-      for (const prop of required) {
-        serviceSchema.properties[prop.name] = {
-          type: prop.type,
-          description: `${service.name}: ${prop.prompt}`
-        };
-        serviceSchema.required.push(prop.name);
-      }
-      
-      // Add optional properties
-      const optional = service.properties?.optional || [];
-      for (const prop of optional) {
-        serviceSchema.properties[prop.name] = {
-          type: prop.type,
-          description: `${service.name}: ${prop.prompt}`
-        };
-      }
-      
-      // Only add service schema if it has properties
-      if (required.length > 0 || optional.length > 0) {
-        schema[service.slug] = serviceSchema;
-      }
-    }
-    
-    return schema;
-  }
-
-  /**
-   * Generate service selection boolean flags schema
-   * 
-   * Creates boolean flags for each service to determine which service-specific
-   * properties should be collected. Uses service slugs as boolean property names.
-   * 
-   * @param {Array} services - Services array from config.json
-   * @returns {Object} Service selection schema object
-   */
-  generateServiceSelectionSchema(services) {
-    const schema = {
-      type: "object",
-      properties: {},
-      description: "Service selection flags for conditional property collection"
-    };
-    
-    for (const service of services) {
-      schema.properties[service.slug] = {
-        type: "boolean",
-        description: `True if appointment is for ${service.name}`
-      };
-    }
-    
-    return schema;
-  }
-
-  /**
-   * Build specialized modifyAppointment function schema
-   * 
-   * Creates a schema where only the fields being updated are included,
-   * rather than requiring all base appointment fields. The agent infers
-   * existing appointment details from identifyAppointment output.
-   * 
-   * @param {Array} services - Services array from config.json
-   * @returns {Object} Complete modifyAppointment function schema
-   */
-  buildModifyAppointmentFunctionSchema(services) {
-    // For modify appointment, only include fields that can be updated
-    // The agent will have existing appointment context from identifyAppointment
-    const updatesSchema = {
-      type: "object",
-      properties: {
-        name: {
-          type: "string",
-          description: "Customer's full name"
-        },
-        phone: {
-          type: "string", 
-          description: "Customer's phone number"
-        },
-        email: {
-          type: "string",
-          description: "Customer's email address"
-        },
-        preferred_contact_method: {
-          type: "string",
-          description: "Customer's preferred contact method (phone, email, text)"
-        },
-        date: {
-          type: "string",
-          description: "Appointment date in YYYY-MM-DD format"
-        },
-        time: {
-          type: "string",
-          description: "Appointment time in HH:MM 24-hour format"
-        },
-        timezone: {
-          type: "string",
-          description: "Timezone for the appointment"
-        },
-        notes: {
-          type: "string",
-          description: "Additional notes or comments"
-        }
-      },
-      // Service is ALWAYS required for modifications to ensure proper validation
-      required: ["service"],
-      description: "Fields to update in the appointment"
-    };
-
-    // Add service selection flags (optional for modifications)
-    const serviceSelection = this.generateServiceSelectionSchema(services);
-    updatesSchema.properties.service = serviceSelection;
-
-    // Add service-specific properties (optional for modifications)
-    const serviceProperties = this.generateServicePropertiesSchema(services);
-    if (Object.keys(serviceProperties).length > 0) {
-      updatesSchema.properties.service_properties = {
-        type: "object",
-        properties: serviceProperties,
-        description: "Service-specific properties based on selected service type"
-      };
-    }
-
-    return updatesSchema;
-  }
-  /**
-   * Build complete appointment function schema with dynamic service properties
-   * 
-   * Combines base appointment fields (name, phone, email, date, time, etc.) with
-   * dynamic service-specific properties and service selection flags.
-   * 
-   * @param {Array} services - Services array from config.json
-   * @returns {Object} Complete function schema for bookAppointment
-   */
-  buildAppointmentFunctionSchema(services) {
-    // Base appointment fields
-    const baseSchema = {
-      type: "object",
-      properties: {
-        name: {
-          type: "string",
-          description: "Customer's full name"
-        },
-        phone: {
-          type: "string", 
-          description: "Customer's phone number"
-        },
-        email: {
-          type: "string",
-          description: "Customer's email address"
-        },
-        preferred_contact_method: {
-          type: "string",
-          description: "Customer's preferred contact method (phone, email, text)"
-        },
-        date: {
-          type: "string",
-          description: "Appointment date in YYYY-MM-DD format"
-        },
-        time: {
-          type: "string",
-          description: "Appointment time in HH:MM 24-hour format"
-        },
-        timezone: {
-          type: "string",
-          description: "Timezone for the appointment"
-        },
-        notes: {
-          type: "string",
-          description: "Additional notes or comments"
-        }
-      },
-      required: ["name", "phone", "email", "preferred_contact_method", "date", "time", "timezone"]
-    };
-
-    // Add service selection flags (renamed to 'service' and made required)
-    const serviceSelection = this.generateServiceSelectionSchema(services);
-    baseSchema.properties.service = serviceSelection;
-    baseSchema.required.push("service");
-
-    // Add service-specific properties
-    const serviceProperties = this.generateServicePropertiesSchema(services);
-    if (Object.keys(serviceProperties).length > 0) {
-      baseSchema.properties.service_properties = {
-        type: "object",
-        properties: serviceProperties,
-        description: "Service-specific properties based on selected service type"
-      };
-    }
-
-    return baseSchema;
-  }
-
-  /**
-   * Generate dynamic CSV columns for appointments based on service properties
-   * 
-   * Creates CSV column headers that include base appointment fields plus
-   * all service-specific properties with service attribution. Uses display names for human-readable
-   * headers while maintaining consistent field naming and clear service association.
-   * 
-   * @param {Array} services - Services array from config.json
-   * @returns {Array} Array of CSV column header strings
-   */
-  generateAppointmentCSVColumns(services) {
-    // Base appointment columns (including Google Calendar Event ID which maps to appointment_id)
-    const baseColumns = [
-      "Name",
-      "Phone",
-      "Email", 
-      "Preferred Contact Method",
-      "Date",
-      "Time",
-      "Service",
-      "Duration",
-      "Status",
-      "Notes",
-      "Google Calendar Event ID",
-      "Created",
-      "Modified"
-    ];
-
-    // Collect all unique property names with service attribution
-    const dynamicColumns = new Map();
-    
-    for (const service of services) {
-      const required = service.properties?.required || [];
-      const optional = service.properties?.optional || [];
-      
-      for (const prop of [...required, ...optional]) {
-        // Create service-attributed column name
-        const serviceName = service.name; // Use service name directly with proper capitalization
-        const propDisplayName = prop.name
-          .split('_')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
-        
-        const columnName = `${serviceName}: ${propDisplayName}`;
-        
-        // Use the column name as key to avoid duplicates
-        dynamicColumns.set(columnName, {
-          service: service.name,
-          property: prop.name,
-          type: prop.type,
-          displayName: propDisplayName
+      // Markdown files: format with Prettier
+      if (ext === ".md" && this.prettierConfig) {
+        return await prettier.format(content, {
+          ...this.prettierConfig,
+          parser: "markdown"
         });
       }
-    }
 
-    // Return combined columns with service-attributed dynamic columns
-    const sortedDynamicColumns = Array.from(dynamicColumns.keys()).sort();
-    return [...baseColumns, ...sortedDynamicColumns];
-  }
-
-  /**
-   * Generate token-optimized service properties guide for agent awareness
-   * 
-   * Creates a condensed guide listing required properties for each service type
-   * using conversational language. Designed to minimize token usage while providing
-   * clear guidance on what data to collect for appointments.
-   * 
-   * @param {Array} services - Services array from config.json
-   * @returns {string} Formatted service properties guide
-   */
-  generateServicePropertiesGuide(services) {
-    if (!services || services.length === 0) {
-      return "No service-specific properties configured.";
-    }
-
-    const serviceGuides = [];
-    
-    for (const service of services) {
-      const required = service.properties?.required || [];
-      const optional = service.properties?.optional || [];
-      
-      if (required.length === 0 && optional.length === 0) {
-        continue; // Skip services with no properties
-      }
-
-      let guide = `**${service.name}**:`;
-      
-      // Required properties (conversational format)
-      if (required.length > 0) {
-        const requiredList = required.map(prop => {
-          // Convert property prompt to conversational format
-          return this.formatPropertyForGuide(prop);
-        }).join(', ');
-        guide += ` ${requiredList}`;
-      }
-      
-      // Optional properties (if any)
-      if (optional.length > 0) {
-        const optionalList = optional.map(prop => {
-          return this.formatPropertyForGuide(prop);
-        }).join(', ');
-        guide += required.length > 0 ? `. Optional: ${optionalList}` : ` ${optionalList} (optional)`;
-      }
-      
-      serviceGuides.push(guide);
-    }
-    
-    if (serviceGuides.length === 0) {
-      return "No service-specific properties configured.";
-    }
-    
-    return serviceGuides.join('\n\n');
-  }
-
-  /**
-   * Format a property for the conversational service guide
-   * 
-   * Converts property definitions into natural, conversational language
-   * suitable for agent guidance while maintaining clarity about data requirements.
-   * 
-   * @param {Object} prop - Property object with name, type, and prompt
-   * @returns {string} Formatted property description
-   */
-  formatPropertyForGuide(prop) {
-    // Use the prompt if it's conversational, otherwise format the name
-    if (prop.prompt && prop.prompt.length < 50) {
-      return prop.prompt;
-    }
-    
-    // Fallback: convert property name to readable format
-    return prop.name
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-      .toLowerCase();
-  }
-
-  // ============================================================================
-  // TEMPLATE CONTENT PROCESSING (File-Type Specific Strategies)
-  // ============================================================================
-
-  /**
-   * Process template content using file-type specific strategies
-   * 
-   * This is the central routing method for template processing. It determines
-   * the appropriate processing strategy based on file type and path:
-   * 
-   * FILE PROCESSING STRATEGIES:
-   * - Filename templating: Replace {{variables}} in filenames only
-   * - Retell Agent JSON: Complex multi-phase processing with prompt injection
-   * - n8n answerQuestion: Template replacement + RAG prompt injection  
-   * - Prompt files: Preserve {{variables}} for Retell runtime processing
-   * - Content files: Full template variable replacement (knowledge base, CSV, tests)
-   * 
-   * @param {string} content - File content to process
-   * @param {string} filePath - File path (determines processing strategy)
-   * @returns {string} Processed content
-   */
-  processTemplateContent(content, filePath = "") {
-    const ext = path.extname(filePath).toLowerCase();
-
-    // SPECIAL CASE 1: Filename templating (filePath === "")
-    if (filePath === "") {
-      let processedContent = content;
-      for (const [key, value] of Object.entries(this.templateVariables)) {
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-        processedContent = processedContent.replace(regex, value);
-      }
-      return processedContent;
-    }
-
-    // SPECIAL CASE 2: Retell Agent JSON (complex multi-phase processing)
-    if (filePath.includes("Retell Agent.json")) {
-      return this.processRetellAgentTemplate(content);
-    }
-
-    // SPECIAL CASE 3: n8n answerQuestion workflow (prompt injection)
-    if (filePath.includes("n8n/") && filePath.includes("answerQuestion.json")) {
-      return this.processN8nAnswerQuestionTemplate(content);
-    }
-
-    // SPECIAL CASE 4: Prompt files (preserve {{variables}} for Retell runtime)
-    if (filePath.includes("prompts/") && ext === ".md") {
-      // Process only specific build-time variables while preserving Retell runtime variables
-      let processedContent = content;
-      
-      // Inject SERVICE_PROPERTIES_GUIDE at build time (not runtime)
-      if (this.clientDataVariables && this.clientDataVariables.SERVICE_PROPERTIES_GUIDE) {
-        const regex = new RegExp(`\\{\\{SERVICE_PROPERTIES_GUIDE\\}\\}`, "g");
-        processedContent = processedContent.replace(regex, this.clientDataVariables.SERVICE_PROPERTIES_GUIDE);
-      }
-      
-      return processedContent;
-    }
-
-    // DEFAULT CASE: All other files get template variable replacement
-    // This includes: CSV files, knowledge base MD, test files, n8n workflows, etc.
-    let processedContent = content;
-
-    // First, replace template variables (build-time variables)
-    for (const [key, value] of Object.entries(this.templateVariables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-      processedContent = processedContent.replace(regex, value);
-    }
-
-    // Then, replace client data variables (for knowledge base and sheets)
-    if (this.clientDataVariables) {
-      for (const [key, value] of Object.entries(this.clientDataVariables)) {
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-        processedContent = processedContent.replace(regex, value);
-      }
-    }
-
-    return processedContent;
-  }
-
-  // ============================================================================
-  // RETELL AGENT TEMPLATE PROCESSING (Complex Multi-Phase Processing)
-  // ============================================================================
-
-  /**
-   * Process Retell Agent JSON with complex multi-phase template processing
-   * 
-   * This method handles the most complex file processing in the build system,
-   * applying all four configuration phases to the Retell agent JSON:
-   * 
-   * PHASE 1: Apply Build Config (direct agent settings)
-   * - Agent name, voice settings, call duration, interruption sensitivity
-   * - Version synchronization (semantic version → integer + title)
-   * 
-   * PHASE 2: Inject Prompts (with {{variables}} preserved)
-   * - Core prompt → global_prompt field
-   * - Preserves Retell's {{variable}} syntax for runtime replacement
-   * 
-   * PHASE 3: Hydrate Runtime Variables (for Retell dynamic_variables)
-   * - Business info, hours, contact details
-   * - Merged with template variables for complete context
-   * 
-   * PHASE 4: Update Infrastructure (webhooks, transfer numbers, services)
-   * - Webhook URL templating per tool
-   * - Transfer phone number updates
-   * - Service schema injection for booking tools
-   * 
-   * @param {string} content - Raw Retell agent JSON content
-   * @returns {string} Processed and formatted JSON
-   */
-  processRetellAgentTemplate(content) {
-    try {
-      const jsonData = JSON.parse(content);
-
-      // PHASE 1: Apply Build Config (direct agent settings)
-      if (jsonData.agent_name !== undefined) {
-        jsonData.agent_name = this.templateVariables.agent_name;
-      }
-
-      // Inject project version from package.json into Retell agent version and version_title fields
-      if (jsonData.version !== undefined || jsonData.version_title !== undefined) {
-        const versionStr = this.templateVariables.version || "1.0.0";
-        
-        // Update version field (convert semantic version to integer for Retell compatibility)
-        if (jsonData.version !== undefined) {
-          // e.g., "1.2.3" -> 123, "2.0.1" -> 201
-          const versionParts = versionStr.split('.').map(n => parseInt(n, 10) || 0);
-          const versionInt = versionParts[0] * 100 + versionParts[1] * 10 + versionParts[2];
-          jsonData.version = versionInt;
-        }
-        
-        // Update version_title field (keep semantic version format with v prefix)
-        if (jsonData.version_title !== undefined) {
-          // Use configured version title suffix from build_config, with backward compatibility
-          const configuredSuffix = this.buildConfig.version_settings?.version_title_suffix;
-          let titleSuffix = configuredSuffix;
-          
-          // Backward compatibility: if no config suffix, extract from existing title
-          if (!titleSuffix) {
-            const currentTitle = jsonData.version_title || "v0 Demo";
-            titleSuffix = currentTitle.replace(/^v[\d.]+\s*/, '') || "Demo";
-          }
-          
-          jsonData.version_title = `v${versionStr} ${titleSuffix}`;
-        }
-        
-        console.log(`📦 Version injection: ${versionStr} -> version: ${jsonData.version || 'unchanged'}, version_title: "${jsonData.version_title || 'unchanged'}"`);
-      }
-
-      // Apply voice settings from build_config
-      if (jsonData.voice_id !== undefined) {
-        jsonData.voice_id = this.buildConfig.voice_settings.voice_id;
-      }
-      if (jsonData.max_call_duration_ms !== undefined) {
-        jsonData.max_call_duration_ms =
-          this.buildConfig.voice_settings.max_call_duration_ms;
-      }
-      if (jsonData.interruption_sensitivity !== undefined) {
-        jsonData.interruption_sensitivity =
-          this.buildConfig.voice_settings.interruption_sensitivity;
-      }
-
-      // PHASE 2: Inject Prompts (with {{variables}} preserved)
-      if (
-        this.corePrompt &&
-        jsonData.conversationFlow?.global_prompt !== undefined
-      ) {
-        jsonData.conversationFlow.global_prompt = this.corePrompt;
-      }
-
-      // PHASE 3: Hydrate Runtime Variables (for Retell dynamic_variables)
-      if (jsonData.conversationFlow?.default_dynamic_variables !== undefined) {
-        jsonData.conversationFlow.default_dynamic_variables = {
-          ...this.runtimeVariables
-        };
-      }
-
-      // PHASE 4: Update infrastructure (webhooks, transfer numbers)
-      this.updateToolWebhookUrls(jsonData.conversationFlow?.tools);
-      this.updateTransferNodes(jsonData.conversationFlow?.nodes);
-
-      // PHASE 5: Inject service types from config into bookAppointment tool
-      this.updateBookAppointmentServices(jsonData.conversationFlow?.tools);
-
-      return JSON.stringify(jsonData, null, 2);
+      // CSV and other files: return as-is
+      return content;
     } catch (error) {
       console.warn(
-        "⚠️ Could not parse JSON for template processing:",
+        `⚠️  Could not optimize ${path.basename(outputPath)}:`,
         error.message
       );
       return content;
     }
   }
-
-  // ============================================================================
-  // N8N WORKFLOW TEMPLATE PROCESSING (RAG Prompt Injection)
-  // ============================================================================
-
-  /**
-   * Process n8n answerQuestion workflow with RAG prompt injection
-   * 
-   * This method handles the specialized processing for the answerQuestion n8n workflow:
-   * 1. Injects the processed RAG prompt into the Answer Agent node's system message
-   * 2. Applies template variable replacement to the RAG prompt content
-   * 3. Locates the specific LangChain agent node and updates its configuration
-   * 
-   * The RAG prompt is loaded from the processed prompts directory and contains
-   * business-specific instructions for answering customer questions while
-   * maintaining security and PII protection guidelines.
-   * 
-   * @param {string} content - Raw n8n workflow JSON content
-   * @returns {string} Processed workflow with injected RAG prompt
-   */
-  processN8nAnswerQuestionTemplate(content) {
-    try {
-      const jsonData = JSON.parse(content);
-
-      // Update systemMessage in the Answer Agent node if RAG prompt is loaded
-      if (this.ragPrompt && jsonData.nodes) {
-        // Apply template variables to the RAG prompt content
-        let processedPrompt = this.ragPrompt;
-        for (const [key, value] of Object.entries(this.templateVariables)) {
-          const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-          processedPrompt = processedPrompt.replace(regex, value);
-        }
-
-        // Find and update the Answer Agent node
-        jsonData.nodes.forEach(node => {
-          if (
-            node.name === "Answer Agent" &&
-            node.type === "@n8n/n8n-nodes-langchain.agent" &&
-            node.parameters?.options?.systemMessage !== undefined
-          ) {
-            node.parameters.options.systemMessage = processedPrompt;
-          }
-        });
-      }
-
-      return JSON.stringify(jsonData, null, 2);
-    } catch (error) {
-      console.warn(
-        "⚠️ Could not parse n8n JSON for template processing:",
-        error.message
-      );
-      return content;
-    }
-  }
-
-  // ============================================================================
-  // INFRASTRUCTURE UPDATE METHODS (Webhooks, Transfer Numbers, Service Schemas)
-  // ============================================================================
-
-  /**
-   * Update transfer call destination numbers in conversation nodes
-   * 
-   * Scans through Retell conversation flow nodes and updates any transfer_call
-   * nodes with the configured transfer phone number from build configuration.
-   * 
-   * @param {Array} nodes - Retell conversation flow nodes array
-   */
-  updateTransferNodes(nodes) {
-    if (!nodes) return;
-
-    nodes.forEach(node => {
-      if (node.type === "transfer_call" && node.transfer_destination?.number) {
-        node.transfer_destination.number = this.buildConfig.infrastructure.transfer_phone_number;
-        console.log(`📞 Updated transfer number: ${this.buildConfig.infrastructure.transfer_phone_number}`);
-      }
-    });
-  }
-
-  /**
-   * Update webhook URLs for all custom tools in Retell agent
-   * 
-   * Templates webhook URLs for each tool using the configured base URL and
-   * tool-specific endpoint mappings. This enables environment-specific
-   * webhook configuration (dev, staging, production).
-   * 
-   * @param {Array} tools - Retell agent tools array
-   */
-  updateToolWebhookUrls(tools) {
-    if (!tools || !this.buildConfig.webhooks.tools) return;
-
-    const webhooks = this.buildConfig.webhooks;
-    const baseUrl = webhooks.base_url;
-    
-    tools.forEach(tool => {
-      if (tool.type === "custom" && tool.name) {
-        // Get webhook ID for this tool from config
-        const webhookId = webhooks.tools[tool.name];
-        if (webhookId) {
-          tool.url = `${baseUrl}/${webhookId}`;
-          console.log(`🔗 Updated webhook URL for tool ${tool.name}: ${tool.url}`);
-        }
-      }
-    });
-  }
-
-  /**
-   * Inject dynamic service schemas into booking and modification tools
-   * 
-   * Automatically generates comprehensive service-specific schemas for bookAppointment and
-   * modifyAppointment tools based on configured services with dynamic properties. This ensures:
-   * 1. Service selection schemas match available business services
-   * 2. Service-specific properties are dynamically generated from config
-   * 3. Service descriptions and property prompts are included
-   * 4. Required fields are properly configured
-   * 5. Validation constraints are enforced
-   * 
-   * SCHEMA GENERATION:
-   * - Base appointment fields (name, phone, date, time, etc.)
-   * - Service selection boolean flags for each service
-   * - Service-specific properties nested by service slug
-   * - Required and optional property validation
-   * 
-   * @param {Array} tools - Retell agent tools array
-   */
-  updateBookAppointmentServices(tools) {
-    if (!tools || !this.config.client_data?.services) return;
-
-    const services = this.config.client_data.services;
-    if (!Array.isArray(services) || services.length === 0) return;
-
-    // Validate service constraints before processing
-    try {
-      this.validateServiceConstraints(services, this.config.client_data.service_constraints);
-    } catch (error) {
-      console.error(`❌ Service configuration validation failed: ${error.message}`);
-      return;
-    }
-
-    let updatedCount = 0;
-
-    // Find and update bookAppointment tool with dynamic schema
-    const bookAppointmentTool = tools.find(
-      tool => tool.name === "bookAppointment"
-    );
-    
-    if (bookAppointmentTool?.parameters) {
-      const dynamicSchema = this.buildAppointmentFunctionSchema(services);
-      
-      // Replace the entire parameters object with the dynamic schema
-      bookAppointmentTool.parameters = dynamicSchema;
-      updatedCount++;
-      
-      console.log(`✅ Generated dynamic schema for bookAppointment with ${services.length} services`);
-    }
-
-    // Find and update modifyAppointment tool with dynamic schema
-    const modifyAppointmentTool = tools.find(
-      tool => tool.name === "modifyAppointment"
-    );
-    
-    if (modifyAppointmentTool?.parameters) {
-      // Use specialized modify schema that only requires fields being updated
-      const updatesSchema = this.buildModifyAppointmentFunctionSchema(services);
-      
-      // Wrap in the modifyAppointment structure
-      const modifySchema = {
-        type: "object",
-        properties: {
-          appointment_id: {
-            type: "string",
-            description: "Unique identifier for the appointment to modify"
-          },
-          updates: updatesSchema
-        },
-        required: ["appointment_id", "updates"]
-      };
-      
-      modifyAppointmentTool.parameters = modifySchema;
-      updatedCount++;
-      
-      console.log(`✅ Generated dynamic schema for modifyAppointment with ${services.length} services`);
-    }
-
-    if (updatedCount > 0) {
-      // Count total dynamic properties across all services
-      const totalProperties = services.reduce((count, service) => {
-        const required = service.properties?.required || [];
-        const optional = service.properties?.optional || [];
-        return count + required.length + optional.length;
-      }, 0);
-      
-      console.log(
-        `✅ Injected ${services.length} service types with ${totalProperties} dynamic properties into ${updatedCount} tool(s)`
-      );
-      console.log(`✅ Service-specific schemas: ${services.map(s => s.slug).join(', ')}`);
-    }
-  }
-
-  // ============================================================================
-  // FILE SCANNING AND PROCESSING UTILITIES
-  // ============================================================================
 
   /**
    * Process template variables in filenames
-   * 
-   * Replaces {{variable}} placeholders in filenames with actual values from
-   * template variables. This enables dynamic file naming based on business
-   * configuration (e.g., "{{business_name}} Core Prompt.md").
-   * 
+   *
    * @param {string} filename - Filename with potential {{variable}} placeholders
-   * @returns {string} Processed filename with variables replaced
+   * @returns {string} Processed filename
    */
   processTemplateFilename(filename) {
-    let processedFilename = filename;
-
-    // Replace template variables in filename
-    for (const [key, value] of Object.entries(this.templateVariables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-      processedFilename = processedFilename.replace(regex, value);
-    }
-
-    return processedFilename;
+    return this.templateProcessor.processFilename(
+      filename,
+      this.templateVariables
+    );
   }
 
   /**
    * Recursively scan directory for processable files
-   * 
-   * Scans the source directory tree and identifies files that should be
-   * processed by the build system. Includes filtering logic to:
-   * 1. Skip system directories (node_modules, .git, dist, etc.)
-   * 2. Include processable file types (.json, .md, .csv)
-   * 3. Exclude build system files and lock files
-   * 4. Return structured file information for processing
-   * 
+   *
    * @param {string} dir - Directory to scan
-   * @param {string} baseDir - Base directory for relative path calculation
-   * @returns {Array} Array of file information objects
+   * @param {string} baseDir - Base directory for relative paths
+   * @returns {Array} Array of file objects
    */
   async scanDirectory(dir, baseDir = "") {
     const files = [];
+
     try {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -1567,154 +329,70 @@ class AIVoiceBuilder {
         const relativePath = path.join(baseDir, entry.name);
 
         if (entry.isDirectory()) {
-          // Skip certain directories
-          if (
-            ["node_modules", ".git", "dist", "secrets", ".github"].includes(
-              entry.name
-            )
-          ) {
-            continue;
-          }
           // Recursively scan subdirectories
           const subFiles = await this.scanDirectory(fullPath, relativePath);
           files.push(...subFiles);
         } else if (entry.isFile()) {
-          // Include files we can process or important config files
-          const ext = path.extname(entry.name).toLowerCase();
-          const isProcessable = [".json", ".md", ".csv"].includes(ext);
-          const isImportant = [
-            "package.json",
-            "README.md",
-            ".prettierrc",
-            ".gitignore"
-          ].includes(entry.name);
+          // Process filename template variables
+          const processedFilename = this.processTemplateFilename(entry.name);
+          const processedRelativePath = path.join(
+            path.dirname(relativePath),
+            processedFilename
+          );
 
-          // Skip certain files
-          const isExcluded =
-            [
-              "package-lock.json",
-              "build.js",
-              ".DS_Store",
-              "README.md",
-              "package.json"
-            ].includes(entry.name) || entry.name.startsWith(".");
-
-          if ((isProcessable || isImportant) && !isExcluded) {
-            files.push({
-              sourcePath: fullPath,
-              relativePath: relativePath,
-              name: entry.name,
-              extension: ext,
-              isProcessable: isProcessable
-            });
-          }
+          files.push({
+            sourcePath: fullPath,
+            relativePath: processedRelativePath,
+            originalName: entry.name,
+            processedName: processedFilename
+          });
         }
       }
     } catch (error) {
-      console.log(`📝 Could not scan directory ${dir}: ${error.message}`);
+      console.warn(`⚠️  Could not scan directory ${dir}:`, error.message);
     }
 
     return files;
   }
 
   /**
-   * Process a single file entry with template processing and statistics tracking
-   * 
-   * Handles the complete processing pipeline for a single file:
-   * 1. Process template variables in filename (e.g., {{business_name}})
-   * 2. Create output directory structure
-   * 3. Apply appropriate content processing strategy
-   * 4. Track processing statistics (file count, size reduction)
-   * 5. Log processing results
-   * 
-   * @param {Object} fileInfo - File information object from scanDirectory
-   * @param {Object} stats - Build statistics object for tracking metrics
+   * Process a single file entry with statistics tracking
+   *
+   * @param {Object} fileInfo - File information object
+   * @param {Object} stats - Statistics object to update
    */
   async processFileEntry(fileInfo, stats) {
+    const outputPath = path.join(this.distDir, fileInfo.relativePath);
+
     try {
-      // Process template filename
-      const processedRelativePath = fileInfo.relativePath
-        .split(path.sep)
-        .map(segment => this.processTemplateFilename(segment))
-        .join(path.sep);
+      const result = await this.processFile(fileInfo.sourcePath, outputPath);
 
-      // Create directory structure in dist
-      const outputDir = path.join(
-        this.distDir,
-        path.dirname(processedRelativePath)
-      );
-      await this.ensureDir(outputDir);
+      stats.totalFiles++;
+      stats.totalOriginalSize += result.originalSize;
+      stats.totalProcessedSize += result.processedSize;
 
-      const outputPath = path.join(this.distDir, processedRelativePath);
-
-      if (fileInfo.isProcessable) {
-        // Process and optimize the file
-        const result = await this.processFile(fileInfo.sourcePath, outputPath);
-
-        stats.totalFiles++;
-        stats.totalOriginalSize += result.original;
-        stats.totalProcessedSize += result.processed;
-        if (!stats.totalOriginalSizeForReduction) {
-          stats.totalOriginalSizeForReduction = 0;
-          stats.totalProcessedSizeForReduction = 0;
-        }
-        if (result.countsTowardReduction) {
-          stats.totalOriginalSizeForReduction += result.original;
-          stats.totalProcessedSizeForReduction += result.processed;
-        }
-
-        console.log(
-          `✅ ${processedRelativePath} - ${result.reduction}% size reduction`
-        );
-      } else {
-        // Copy file with template processing for content
-        const content = await fs.readFile(fileInfo.sourcePath, "utf8");
-        const processedContent = this.processTemplateContent(
-          content,
-          fileInfo.sourcePath
-        );
-        await fs.writeFile(outputPath, processedContent, "utf8");
-
-        const stat = await fs.stat(fileInfo.sourcePath);
-
-        stats.totalFiles++;
-        stats.totalOriginalSize += stat.size;
-        stats.totalProcessedSize += Buffer.byteLength(processedContent, "utf8");
-
-        console.log(`📄 ${processedRelativePath} - template processed`);
+      // Track size reduction only for minified files
+      if (result.reduction > 0) {
+        stats.totalOriginalSizeForReduction =
+          (stats.totalOriginalSizeForReduction || 0) + result.originalSize;
+        stats.totalProcessedSizeForReduction =
+          (stats.totalProcessedSizeForReduction || 0) + result.processedSize;
       }
     } catch (error) {
-      console.error(
-        `❌ Error processing ${fileInfo.relativePath}:`,
-        error.message
-      );
+      console.error(`❌ Failed to process ${fileInfo.sourcePath}`);
+      throw error;
     }
   }
 
-  // ============================================================================
-  // MAIN BUILD ORCHESTRATION
-  // ============================================================================
-
   /**
-   * Execute the complete build process
-   * 
-   * This is the main orchestration method that coordinates the entire build process:
-   * 
-   * BUILD PROCESS FLOW:
-   * 1. Initialize build statistics and timing
-   * 2. Scan source directory for processable files
-   * 3. PHASE 1: Process prompt files first (required for injection)
-   * 4. Load processed prompts for injection into other files
-   * 5. PHASE 2: Process all remaining files with prompt injection
-   * 6. Generate build statistics and metadata
-   * 7. Output build summary and performance metrics
-   * 
-   * TWO-PHASE PROCESSING:
-   * The build uses a two-phase approach because prompts must be processed
-   * and loaded before they can be injected into other files (Retell agent,
-   * n8n workflows). This ensures proper dependency resolution.
-   * 
-   * @returns {Object} Build information with statistics and metadata
+   * Main build process
+   *
+   * Two-phase processing:
+   * 1. Process prompt files first
+   * 2. Load prompts from dist
+   * 3. Process all other files with prompt injection
+   *
+   * @returns {Object} Build information with statistics
    */
   async build() {
     console.log("🔧 Starting build process...");
@@ -1740,19 +418,28 @@ class AIVoiceBuilder {
       f => !f.relativePath.includes("prompts/")
     );
 
-    // Process prompt files first
+    // Process prompt files
     for (const fileInfo of promptFiles) {
       await this.processFileEntry(fileInfo, stats);
     }
 
     // Load prompts from the processed files in dist
     if (promptFiles.length > 0) {
-      await this.loadPrompts();
+      await this.promptInjector.loadPrompts();
     }
 
-    // Second phase: Process all other files (now that prompts are loaded)
+    // Second phase: Process all other files with prompt injection
     for (const fileInfo of otherFiles) {
       await this.processFileEntry(fileInfo, stats);
+    }
+
+    // Token tracking phase: Analyze LLM-facing content
+    const tokenTrackingEnabled =
+      this.config?.build_config?.token_tracking?.enabled !== false;
+
+    let tokenReport = null;
+    if (tokenTrackingEnabled) {
+      tokenReport = await this._analyzeTokenUsage();
     }
 
     // Create build info
@@ -1763,7 +450,6 @@ class AIVoiceBuilder {
         totalFiles: stats.totalFiles,
         originalSize: `${(stats.totalOriginalSize / 1024).toFixed(2)} KB`,
         processedSize: `${(stats.totalProcessedSize / 1024).toFixed(2)} KB`,
-        // Reduction is calculated only for truly minified artifact types (e.g., JSON)
         totalReduction: stats.totalOriginalSizeForReduction
           ? `${(
               ((stats.totalOriginalSizeForReduction -
@@ -1773,7 +459,8 @@ class AIVoiceBuilder {
             ).toFixed(1)}%`
           : "0.0%",
         processingTime: `${Date.now() - stats.processingTime}ms`
-      }
+      },
+      token_usage: tokenReport
     };
 
     await fs.writeFile(
@@ -1792,10 +479,88 @@ class AIVoiceBuilder {
   }
 
   /**
+   * Analyze token usage across all LLM-facing content
+   *
+   * @returns {Promise<Object>} Token usage report
+   */
+  async _analyzeTokenUsage() {
+    console.log("\n🔍 Analyzing token usage...");
+
+    // Reset counter for fresh analysis
+    this.tokenCounter.reset();
+
+    try {
+      // Find and analyze Retell agent
+      const agentFiles = await this._findBuiltAgents();
+      if (agentFiles.length > 0) {
+        const agentPath = agentFiles[0].fullPath;
+        const agentContent = await fs.readFile(agentPath, "utf-8");
+        const agentConfig = JSON.parse(agentContent);
+
+        // Count all agent components
+        this.tokenCounter.countRetellAgent(agentConfig);
+      }
+
+      // Find and analyze knowledge bases
+      const kbDir = path.join(this.distDir, "knowledge-base");
+      try {
+        const kbFiles = await fs.readdir(kbDir);
+        for (const kbFile of kbFiles) {
+          if (kbFile.endsWith(".md")) {
+            const kbPath = path.join(kbDir, kbFile);
+            const kbContent = await fs.readFile(kbPath, "utf-8");
+            this.tokenCounter.countKnowledgeBase(kbContent, kbFile);
+          }
+        }
+      } catch (error) {
+        // Knowledge base directory might not exist
+      }
+
+      // Generate comprehensive report
+      const report = this.tokenCounter.generateReport();
+
+      // Display console summary
+      const consoleSummary = this.tokenCounter.formatReportForConsole(report);
+      console.log(consoleSummary);
+
+      // Save detailed report to file
+      await fs.writeFile(
+        path.join(this.distDir, "token-usage-report.json"),
+        JSON.stringify(report, null, 2)
+      );
+
+      console.log(
+        `💾 Detailed token report saved to dist/token-usage-report.json`
+      );
+
+      return report;
+    } catch (error) {
+      console.warn("⚠️  Could not complete token analysis:", error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Find all built Retell agent JSON files
+   *
+   * @returns {Promise<Array>} Array of agent file objects
+   */
+  async _findBuiltAgents() {
+    try {
+      const files = await fs.readdir(this.distDir);
+      return files
+        .filter(f => f.includes("Retell Agent") && f.endsWith(".json"))
+        .map(filename => ({
+          filename,
+          fullPath: path.join(this.distDir, filename)
+        }));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  /**
    * Clean the output directory
-   * 
-   * Removes the entire dist directory and all generated files. This is useful
-   * for ensuring clean builds and removing any stale generated content.
    */
   async clean() {
     try {
@@ -1805,6 +570,1132 @@ class AIVoiceBuilder {
       console.log("🧹 No dist directory to clean");
     }
   }
+
+  /**
+   * Upload built workflows to n8n instance
+   *
+   * Note: This method contains the complete n8n integration logic from the original
+   * implementation. Future refactoring could extract this to a separate N8nDeployer module.
+   *
+   * @param {Object} options - Upload configuration options
+   * @returns {Promise<Object>} Upload results
+   */
+  async uploadWorkflowsToN8n(options = {}) {
+    const webhookConfig = this.config?.build_config?.webhook_deployment;
+
+    if (!webhookConfig?.enabled) {
+      console.log("ℹ️  Webhook deployment disabled - skipping workflow upload");
+      return { skipped: true, reason: "deployment_disabled" };
+    }
+
+    console.log(
+      "🚀 Starting n8n workflow upload with unique webhook endpoints..."
+    );
+
+    try {
+      // Validate configuration
+      this._validateN8nConfiguration(webhookConfig);
+
+      // Find built workflow files
+      const workflowFiles = await this._findBuiltWorkflows();
+
+      if (workflowFiles.length === 0) {
+        console.log("⚠️  No workflow files found in dist directory");
+        return {
+          success: true,
+          workflows: [],
+          message: "No workflows to upload"
+        };
+      }
+
+      // Process authentication
+      const authConfig = await this._prepareN8nAuthentication(webhookConfig);
+
+      // Validate credentials
+      if (!authConfig.instanceUrl) {
+        throw new Error("No n8n instance URL configured");
+      }
+
+      if (
+        !authConfig.api_key &&
+        !(authConfig.username && authConfig.password)
+      ) {
+        throw new Error("No n8n credentials configured");
+      }
+
+      console.log(`🎯 Targeting n8n instance: ${authConfig.instanceUrl}`);
+
+      // Get or create project for organization
+      let projectId = null;
+      try {
+        projectId = await this._getOrCreateProject(authConfig);
+        if (projectId) {
+          console.log(`📁 Using project: ${this.templateVariables.business_name}`);
+        }
+      } catch (error) {
+        console.warn(`⚠️  Could not setup project: ${error.message}`);
+      }
+
+      // Cleanup old workflows first
+      if (webhookConfig.deployment?.cleanup_old_workflows !== false) {
+        try {
+          await this._cleanupOldWorkflows(authConfig, projectId);
+        } catch (error) {
+          console.warn(`⚠️  Could not cleanup old workflows: ${error.message}`);
+        }
+      }
+
+      // Upload workflows with retry logic
+      const uploadResults = await this._bulkUploadWorkflows(
+        workflowFiles,
+        webhookConfig,
+        authConfig,
+        projectId
+      );
+
+      console.log(
+        `✅ Uploaded ${uploadResults.successful.length} workflows successfully`
+      );
+      if (uploadResults.failed.length > 0) {
+        console.log(
+          `❌ Failed to upload ${uploadResults.failed.length} workflows`
+        );
+        uploadResults.failed.forEach(failure => {
+          console.log(`   ${failure.workflow}: ${failure.error}`);
+        });
+      }
+
+      // Display webhook information
+      if (this.webhookHashes && Object.keys(this.webhookHashes).length > 0) {
+        console.log("\n🔗 Deployed webhook endpoints:");
+        Object.entries(this.webhookUrls).forEach(([tool, url]) => {
+          console.log(`   ${tool}: ${url}`);
+        });
+      }
+
+      return {
+        success: uploadResults.failed.length === 0,
+        total: workflowFiles.length,
+        successful: uploadResults.successful,
+        failed: uploadResults.failed,
+        webhookHashes: this.webhookHashes,
+        message: `Uploaded ${uploadResults.successful.length}/${workflowFiles.length} workflows`
+      };
+    } catch (error) {
+      console.error("❌ n8n workflow upload failed:", error.message);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Validate n8n configuration
+   *
+   * @param {Object} webhookConfig - Webhook deployment configuration
+   */
+  _validateN8nConfiguration(webhookConfig) {
+    if (!webhookConfig.instance_url) {
+      throw new Error("n8n instance_url is required");
+    }
+
+    if (
+      !webhookConfig.credentials?.api_key &&
+      !webhookConfig.credentials?.email
+    ) {
+      throw new Error("n8n credentials are required");
+    }
+
+    // Validate URL format
+    try {
+      new URL(webhookConfig.instance_url);
+    } catch {
+      throw new Error("Invalid n8n instance_url format");
+    }
+  }
+
+  /**
+   * Find all built workflow JSON files
+   *
+   * @returns {Promise<Array>} Array of workflow file objects
+   */
+  async _findBuiltWorkflows() {
+    const workflowsDir = path.join(this.distDir, "workflows");
+
+    try {
+      const files = await fs.readdir(workflowsDir);
+      return files
+        .filter(file => file.endsWith(".json"))
+        .map(file => ({
+          name: file,
+          path: path.join(workflowsDir, file),
+          workflowName: path.basename(file, ".json")
+        }));
+    } catch (error) {
+      console.warn("⚠️  Could not read workflows directory:", error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Prepare authentication configuration for n8n CLI
+   *
+   * @param {Object} n8nConfig - n8n configuration
+   * @returns {Promise<Object>} Processed authentication config
+   */
+  async _prepareN8nAuthentication(n8nConfig) {
+    const authConfig = {
+      instanceUrl: n8nConfig.instance_url,
+      ...n8nConfig.credentials
+    };
+
+    // Process environment variable references
+    Object.keys(authConfig).forEach(key => {
+      if (typeof authConfig[key] === "string") {
+        if (authConfig[key].startsWith("env:")) {
+          const envVar = authConfig[key].replace("env:", "");
+          const value = process.env[envVar];
+          if (!value) {
+            throw new Error(`Environment variable ${envVar} is required`);
+          }
+          authConfig[key] = value;
+        }
+      }
+    });
+
+    return authConfig;
+  }
+
+  /**
+   * Get or create a project for organizing workflows
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string|null>} Project ID or null
+   */
+  async _getOrCreateProject(authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    const businessName = this.templateVariables.business_name;
+    
+    return new Promise((resolve, reject) => {
+      try {
+        // First, try to find existing project
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/projects`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                const projects = response.data || [];
+                
+                // Look for existing project
+                const existingProject = projects.find(project => project.name === businessName);
+                if (existingProject) {
+                  resolve(existingProject.id);
+                  return;
+                }
+
+                // Create new project
+                try {
+                  const newProjectId = await this._createProject(businessName, authConfig);
+                  resolve(newProjectId);
+                } catch (createError) {
+                  console.warn(`⚠️  Could not create project: ${createError.message}`);
+                  resolve(null);
+                }
+              } else {
+                resolve(null);
+              }
+            } catch (parseError) {
+              resolve(null);
+            }
+          });
+        });
+
+        req.on('error', () => {
+          resolve(null);
+        });
+
+        req.end();
+
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Create a new project
+   *
+   * @param {string} projectName - Name of the project to create
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string>} Project ID
+   */
+  async _createProject(projectName, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const projectData = JSON.stringify({ name: projectName });
+        
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/projects`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(projectData),
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const createdProject = JSON.parse(responseData);
+                console.log(`📁 Created new project: ${projectName}`);
+                resolve(createdProject.id);
+              } else {
+                reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse response: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(projectData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to create project: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Cleanup old workflows from n8n instance
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @param {string|null} projectId - Project ID to filter workflows
+   * @returns {Promise<Array>} Array of deleted workflow IDs
+   */
+  async _cleanupOldWorkflows(authConfig, projectId = null) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    console.log("🧹 Cleaning up old workflows...");
+
+    return new Promise((resolve, reject) => {
+      try {
+        // Get all workflows, filtered by project if provided
+        let urlPath = '/api/v1/workflows';
+        const queryParams = [];
+        if (projectId) {
+          queryParams.push(`projectId=${projectId}`);
+        }
+        if (queryParams.length > 0) {
+          urlPath += '?' + queryParams.join('&');
+        }
+        
+        const url = new URL(`${authConfig.instanceUrl}${urlPath}`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname + url.search,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                const workflows = response.data || [];
+                
+                // Filter workflows that match our business name pattern
+                const businessName = this.templateVariables.business_name;
+                const oldWorkflows = workflows.filter(w => 
+                  w.name.startsWith(businessName + ' - ') ||
+                  w.name.startsWith(businessName + '-') ||
+                  // Fallback patterns for workflows without business prefix
+                  w.name.includes('Book Appointment') ||
+                  w.name.includes('Answer Question') ||
+                  w.name.includes('Cancel Appointment') ||
+                  w.name.includes('Modify Appointment') ||
+                  w.name.includes('Identify Appointment') ||
+                  w.name.includes('Log Lead') ||
+                  w.name.includes('Day And Time')
+                );
+
+                console.log(`📋 Found ${oldWorkflows.length} old workflows to cleanup`);
+
+                const deletedIds = [];
+                for (const workflow of oldWorkflows) {
+                  try {
+                    await this._deleteWorkflow(workflow.id, authConfig);
+                    deletedIds.push(workflow.id);
+                    console.log(`🗑️  Deleted: ${workflow.name}`);
+                  } catch (error) {
+                    console.warn(`⚠️  Could not delete workflow ${workflow.name}: ${error.message}`);
+                  }
+                }
+
+                resolve(deletedIds);
+              } else {
+                reject(new Error(`Failed to fetch workflows: HTTP ${res.statusCode} - ${responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse workflows response: ${parseError.message}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to cleanup workflows: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Delete a single workflow from n8n instance
+   *
+   * @param {string} workflowId - ID of workflow to delete
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _deleteWorkflow(workflowId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to delete workflow: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Upload multiple workflows with retry logic
+   *
+   * @param {Array} workflowFiles - Array of workflow file objects
+   * @param {Object} n8nConfig - n8n configuration
+   * @param {Object} authConfig - Authentication configuration
+   * @param {string|null} projectId - Project ID to assign workflows to
+   * @returns {Promise<Object>} Upload results
+   */
+  async _bulkUploadWorkflows(workflowFiles, n8nConfig, authConfig, projectId = null) {
+    const results = {
+      successful: [],
+      failed: []
+    };
+
+    const { spawn } = require("child_process");
+
+    for (const workflow of workflowFiles) {
+      let attempts = 0;
+      const maxAttempts = n8nConfig.cli_options?.retry_attempts || 3;
+      let success = false;
+
+      while (attempts < maxAttempts && !success) {
+        attempts++;
+
+        try {
+          console.log(
+            `📤 Uploading ${workflow.name} (attempt ${attempts}/${maxAttempts})`
+          );
+
+          await this._uploadSingleWorkflow(workflow, n8nConfig, authConfig, projectId);
+
+          results.successful.push({
+            name: workflow.name,
+            workflowName: workflow.workflowName,
+            attempts: attempts
+          });
+
+          success = true;
+        } catch (error) {
+          console.warn(
+            `⚠️  Upload attempt ${attempts} failed: ${error.message}`
+          );
+
+          if (attempts === maxAttempts) {
+            results.failed.push({
+              name: workflow.name,
+              workflowName: workflow.workflowName,
+              error: error.message,
+              attempts: attempts
+            });
+          } else {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Upload a single workflow file to n8n using REST API
+   *
+   * @param {Object} workflow - Workflow file object
+   * @param {Object} n8nConfig - n8n configuration
+   * @param {Object} authConfig - Authentication configuration
+   * @param {string|null} projectId - Project ID to assign workflow to
+   * @returns {Promise<void>}
+   */
+  async _uploadSingleWorkflow(workflow, n8nConfig, authConfig, projectId = null) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        // Read the workflow file
+        const workflowData = JSON.parse(require('fs').readFileSync(workflow.path, 'utf8'));
+        
+        // Add business name prefix to workflow name for easy identification
+        const businessName = this.templateVariables.business_name;
+        let workflowName = workflowData.name;
+        
+        // Only add prefix if it doesn't already have it
+        if (!workflowName.startsWith(businessName + ' - ')) {
+          workflowName = `${businessName} - ${workflowName}`;
+        }
+
+        // Prepare workflow for API (remove read-only fields)
+        const apiWorkflow = {
+          name: workflowName,
+          nodes: workflowData.nodes,
+          connections: workflowData.connections,
+          settings: workflowData.settings || {}
+        };
+
+        // Convert to JSON
+        const jsonData = JSON.stringify(apiWorkflow);
+        
+        // Parse URL
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(jsonData),
+          }
+        };
+
+        // Add authentication header
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        // Choose http or https
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const createdWorkflow = JSON.parse(responseData);
+                console.log(`✅ Successfully uploaded ${workflow.workflowName} as "${workflowName}"`);
+                
+                // Add tag for organization (fallback for instances without project support)
+                if (createdWorkflow.data?.id) {
+                  try {
+                    await this._tagWorkflow(createdWorkflow.data.id, authConfig);
+                  } catch (tagError) {
+                    console.warn(`⚠️  Could not tag workflow: ${tagError.message}`);
+                  }
+                }
+                
+                // Activate workflow if requested
+                if (n8nConfig.deployment?.activate_workflows && createdWorkflow.id) {
+                  await this._activateWorkflow(createdWorkflow.id, authConfig);
+                }
+                
+                resolve();
+              } else {
+                const errorData = JSON.parse(responseData);
+                reject(new Error(`HTTP ${res.statusCode}: ${errorData.message || responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse response: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(jsonData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to upload workflow: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Transfer a workflow to a project using REST API
+   *
+   * @param {string} workflowId - ID of the workflow to transfer
+   * @param {string} projectId - ID of the project to transfer to
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _transferWorkflowToProject(workflowId, projectId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const transferData = JSON.stringify({ projectId });
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}/transfer`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(transferData),
+          }
+        };
+
+        // Add authentication header
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        // Choose http or https
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(transferData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to transfer workflow: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Activate a workflow using REST API
+   *
+   * @param {string} workflowId - ID of the workflow to activate
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _activateWorkflow(workflowId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}/activate`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              console.log(`🟢 Activated workflow ${workflowId}`);
+              resolve();
+            } else {
+              // Don't fail the entire upload if activation fails
+              console.warn(`⚠️  Could not activate workflow ${workflowId}: HTTP ${res.statusCode}`);
+              resolve();
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          console.warn(`⚠️  Could not activate workflow ${workflowId}: ${error.message}`);
+          resolve(); // Don't fail the upload
+        });
+
+        req.end();
+
+      } catch (error) {
+        console.warn(`⚠️  Could not activate workflow ${workflowId}: ${error.message}`);
+        resolve(); // Don't fail the upload
+      }
+    });
+  }
+
+  /**
+   * Tag a workflow for organization (folder-like structure)
+   *
+   * @param {string} workflowId - ID of the workflow to tag
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _tagWorkflow(workflowId, authConfig) {
+    try {
+      // Get or create the business tag
+      const tagId = await this._getOrCreateBusinessTag(authConfig);
+      
+      if (tagId) {
+        await this._addTagToWorkflow(workflowId, tagId, authConfig);
+      }
+    } catch (error) {
+      throw new Error(`Failed to tag workflow: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get or create a tag for the business
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string|null>} Tag ID or null
+   */
+  async _getOrCreateBusinessTag(authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    const businessName = this.templateVariables.business_name;
+    const tagName = businessName;
+
+    return new Promise((resolve, reject) => {
+      try {
+        // First, try to find existing tag
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', async () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                const tags = response.data || [];
+                
+                // Look for existing tag
+                const existingTag = tags.find(tag => tag.name === tagName);
+                if (existingTag) {
+                  console.log(`📋 Using existing tag: ${tagName}`);
+                  resolve(existingTag.id);
+                  return;
+                }
+
+                // Create new tag
+                try {
+                  const newTagId = await this._createTag(tagName, authConfig);
+                  console.log(`🏷️  Created new tag: ${tagName}`);
+                  resolve(newTagId);
+                } catch (createError) {
+                  // If tag already exists, fetch it again
+                  if (createError.message.includes('409') || createError.message.includes('already exists')) {
+                    console.log(`📋 Tag already exists: ${tagName}`);
+                    // Try to find it again (might have been created between calls)
+                    try {
+                      const retryResponse = await this._getTags(authConfig);
+                      const existingTag = retryResponse.find(tag => tag.name === tagName);
+                      resolve(existingTag ? existingTag.id : null);
+                    } catch {
+                      resolve(null);
+                    }
+                  } else {
+                    console.warn(`⚠️  Could not create tag: ${createError.message}`);
+                    resolve(null);
+                  }
+                }
+              } else {
+                resolve(null);
+              }
+            } catch (parseError) {
+              resolve(null);
+            }
+          });
+        });
+
+        req.on('error', () => {
+          resolve(null);
+        });
+
+        req.end();
+
+      } catch (error) {
+        resolve(null);
+      }
+    });
+  }
+
+  /**
+   * Get all tags from n8n instance
+   *
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<Array>} Array of tags
+   */
+  async _getTags(authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const response = JSON.parse(responseData);
+                resolve(response.data || []);
+              } else {
+                resolve([]);
+              }
+            } catch (parseError) {
+              resolve([]);
+            }
+          });
+        });
+
+        req.on('error', () => {
+          resolve([]);
+        });
+
+        req.end();
+
+      } catch (error) {
+        resolve([]);
+      }
+    });
+  }
+
+  /**
+   * Create a new tag
+   *
+   * @param {string} tagName - Name of the tag to create
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<string>} Tag ID
+   */
+  async _createTag(tagName, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const tagData = JSON.stringify({ name: tagName });
+        
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(tagData),
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            try {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                const createdTag = JSON.parse(responseData);
+                resolve(createdTag.id);
+              } else {
+                reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+              }
+            } catch (parseError) {
+              reject(new Error(`Failed to parse response: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(tagData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to create tag: ${error.message}`));
+      }
+    });
+  }
+
+  /**
+   * Add a tag to a workflow
+   *
+   * @param {string} workflowId - ID of the workflow
+   * @param {string} tagId - ID of the tag
+   * @param {Object} authConfig - Authentication configuration
+   * @returns {Promise<void>}
+   */
+  async _addTagToWorkflow(workflowId, tagId, authConfig) {
+    const https = require('https');
+    const http = require('http');
+    const { URL } = require('url');
+
+    return new Promise((resolve, reject) => {
+      try {
+        const tagData = JSON.stringify([{ id: tagId }]);
+        
+        const url = new URL(`${authConfig.instanceUrl}/api/v1/workflows/${workflowId}/tags`);
+        const options = {
+          hostname: url.hostname,
+          port: url.port || (url.protocol === 'https:' ? 443 : 80),
+          path: url.pathname,
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(tagData),
+          }
+        };
+
+        if (authConfig.api_key) {
+          options.headers['X-N8N-API-KEY'] = authConfig.api_key;
+        }
+
+        const client = url.protocol === 'https:' ? https : http;
+        
+        const req = client.request(options, (res) => {
+          let responseData = '';
+
+          res.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              resolve();
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(new Error(`Request failed: ${error.message}`));
+        });
+
+        req.write(tagData);
+        req.end();
+
+      } catch (error) {
+        reject(new Error(`Failed to tag workflow: ${error.message}`));
+      }
+    });
+  }
 }
 
 // ============================================================================
@@ -1813,16 +1704,13 @@ class AIVoiceBuilder {
 
 /**
  * Main CLI entry point for the build system
- * 
- * Provides command-line interface for common build operations:
- * - build: Process all files and generate dist directory
- * - clean: Remove dist directory and all generated files  
- * - rebuild: Clean and build in sequence for fresh builds
- * 
+ *
  * USAGE:
  * node build.js build    # Build optimized files
- * node build.js clean    # Clean dist directory  
+ * node build.js clean    # Clean dist directory
  * node build.js rebuild  # Clean and build
+ * node build.js upload   # Upload workflows to n8n
+ * node build.js deploy   # Build and upload
  */
 async function main() {
   const builder = new AIVoiceBuilder();
@@ -1841,18 +1729,34 @@ async function main() {
       await builder.clean();
       await builder.build();
       break;
+    case "upload":
+      const uploadResult = await builder.uploadWorkflowsToN8n();
+      if (!uploadResult.success && !uploadResult.skipped) {
+        process.exit(1);
+      }
+      break;
+    case "deploy":
+      await builder.clean();
+      await builder.build();
+      const deployResult = await builder.uploadWorkflowsToN8n();
+      if (!deployResult.success && !deployResult.skipped) {
+        process.exit(1);
+      }
+      break;
     default:
       console.log("Available commands:");
       console.log("  npm run build     - Build optimized files");
       console.log("  npm run clean     - Clean dist directory");
       console.log("  npm run rebuild   - Clean and build");
+      console.log("  npm run upload    - Upload workflows to n8n");
+      console.log("  npm run deploy    - Build and upload to n8n");
   }
 }
 
-// Entry point: run main function if this file is executed directly
+// Entry point
 if (require.main === module) {
   main().catch(console.error);
 }
 
-// Export the builder class for programmatic usage
+// Export for programmatic usage
 module.exports = AIVoiceBuilder;

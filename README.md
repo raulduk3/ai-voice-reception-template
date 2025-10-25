@@ -1,37 +1,34 @@
-# AI Voice Reception Template
+# AI Voice Reception Template - Modular Architecture
 
 ![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-yellow.svg)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16.0.0-brightgreen)](https://nodejs.org/)
 [![Retell.ai](https://img.shields.io/badge/retell.ai-Compatible-blue)](https://retell.ai/)
 [![n8n](https://img.shields.io/badge/n8n-Workflows-orange)](https://n8n.io/)
+![Architecture](https://img.shields.io/badge/architecture-modular-green)
 
-Professional AI voice receptionist template with intelligent four-phase configuration system, PII
-protection, and seamless Retell.ai + n8n integration. Template-first approach: clone once, customize
-for unlimited clients with automated configuration management and prompt injection.
+Professional AI voice receptionist template with **modular architecture** and intelligent four-phase configuration system. Template-first approach: clone once, customize for unlimited clients with automated configuration management, prompt injection, dynamic service schema generation, and PII protection.
 
 ## Table of Contents
 
 ### Getting Started
 
 - [Quick Start](#quick-start)
-- [Template Architecture](#template-architecture)
+- [Features](#features)
+- [Modular Architecture](#modular-architecture-overview)
+
+### Configuration & Build
+
 - [Configuration](#configuration)
-
-### Core Architecture
-
-- [Action Schemas & Integration](#action-schemas--integration)
-- [GitHub Copilot Commands](#github-copilot-commands)
-- [Security Features](#security)
-
-### Deployment & Operations
-
 - [Available Commands](#available-commands)
-- [Release Management](#release-management)
-- [Real-World Examples](#real-world-examples)
 
 ### Development & Extension
 
+- [Core Modules](#core-modules)
+- [Extension Points](#extension-points)
+- [API Reference](#api-reference)
 - [File Structure](#file-structure)
+- [Action Schemas & Integration](#action-schemas--integration)
+- [GitHub Copilot Commands](#github-copilot-commands)
 - [Development](#development)
 - [Resources](#resources)
 
@@ -45,84 +42,74 @@ npm install
 
 # Configure client (edit config.json with client details)
 # See CONFIG.md for detailed configuration guide
+nano config.json
 
-# Build
+# Build with modular system
 npm run build
+
+# Deploy to n8n (optional)
+npm run deploy
 ```
 
 ## Features
 
-### Core Capabilities
+### Key Features
 
-- **Single Config**: `config.json` drives all customization through four-phase processing
-- **Prompt Injection**: Markdown prompts auto-inject into Retell agent and n8n workflows
-- **Webhook Templating**: Dynamic URL generation per tool with environment support
-- **Service Type Injection**: Automatically injects business services into booking schemas
+- **Modular Architecture**: Independent, focused modules with clean interfaces
+- **Four-Phase Configuration**: Template vars → Build config → Runtime vars → Client data
+- **Automated Prompt Injection**: Markdown prompts auto-inject into Retell agent and n8n workflows
+- **Dynamic Service Schemas**: Business services automatically generate booking tool schemas
+- **Unique Webhook Endpoints**: Hash-based URLs for collision-free n8n deployments
 - **PII Protection**: Security-first design with appointment identification routing
-
-### Development & Testing
-
-- **GitHub Copilot**: Custom slash commands for rapid development (`/retell-flow`, `/n8n-workflow`,
-  `/secure-prompt`)
+- **Token Usage Tracking**: Built-in cost estimation and optimization analysis
+- **GitHub Copilot Integration**: Custom slash commands for rapid development (`/retell-flow`, `/n8n-workflow`, `/secure-prompt`)
 - **Comprehensive Testing**: Built-in test scenarios with business context and persona-based testing
-- **Client Data Processing**: Structured business information for automated knowledge base
-  generation
+- **Client Data Processing**: Structured business information for automated knowledge base generation
 - **Build Optimization**: Intelligent file processing with size reduction and validation
 
-### Integration Architecture
+## Modular Architecture Overview
 
-- **Multi-Phase Build**: Template variables → Build config → Runtime variables → Client data
-- **File Type Intelligence**: Different processing for prompts, workflows, knowledge base, and test
-  files
-- **Business Context**: Automatic injection of services, hours, policies into all relevant
-  components
-
-## Template Architecture
-
-### Smart Configuration System
-
-- **Single Source of Truth**: `config.json` drives all template variables
-- **Automatic Templating**: Filenames, content, and configurations update automatically
-- **Prompt Injection**: Markdown prompts auto-inject into Retell agent and n8n workflows
-- **Webhook Management**: Per-tool webhook URL configuration with environment support
-- **Service Type Injection**: Automatically injects service types from config into booking tools
-- **Multi-Phase Processing**: Four distinct configuration phases for maximum flexibility
-
-### Project Structure
+The build system uses **9 independent modules**, each with a single responsibility:
 
 ```
-📁 Template Repository
-├── 📄 config.json                 # Client configuration & template variables
-├── 🔧 build.js                    # Smart templating engine with prompt injection
-├── 📁 src/                        # Source templates (edit these)
-│   ├── 🤖 {{agent_name}} - Retell Agent.json
-│   ├── 📝 prompts/
-│   │   ├── {{business_name}} Core Prompt.md
-│   │   └── {{business_name}} Answer Question - RAG Agent Prompt.md
-│   ├── 📚 knowledge-base/
-│   │   ├── Primary.md
-│   │   └── Supplementary.md
-│   ├── 📊 sheets/
-│   │   ├── {{business_name}} Appointments.csv
-│   │   ├── {{business_name}} Leads.csv
-│   │   └── {{business_name}} Service Types.csv
-│   ├── 🧪 tests/                  # Test scenarios and personas
-│   └── ⚙️ n8n/                    # Workflow templates
-│       ├── answerQuestion.json
-│       ├── bookAppointment.json
-│       ├── cancelAppointment.json
-│       ├── identifyAppointment.json
-│       ├── logLead.json
-│       ├── modifyAppointment.json
-│       └── timeAndDay.json
-└── 📁 dist/                       # Generated files (deploy these)
-    ├── 🤖 [Business Name] - Retell Agent.json
-    ├── 📝 prompts/[Business Name] Core Prompt.md
-    ├── 📚 knowledge-base/[templated content]
-    ├── 📊 sheets/[business-specific CSV files]
-    ├── 🧪 tests/[templated test scenarios]
-    └── ⚙️ n8n/[all workflows with templated webhooks].json
+┌─────────────────────────────────────────────────────────────┐
+│                      AIVoiceBuilder                         │
+│                   (Orchestration Layer)                      │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+        ┌────────────┴────────────┐
+        │                         │
+┌───────▼────────┐       ┌────────▼─────────┐
+│ Configuration  │       │   Template       │
+│    Loader      │──────▶│   Processor      │
+└───────┬────────┘       └────────┬─────────┘
+        │                         │
+        │                ┌────────┴─────────────┐
+        │                │                      │
+┌───────▼───────┐  ┌─────▼──────┐      ┌──────▼──────┐
+│   Runtime     │  │   Retell   │      │     n8n     │
+│   Variable    │  │   Agent    │      │  Workflow   │
+│   Builder     │  │ Processor  │      │  Processor  │
+└───────┬───────┘  └─────┬──────┘      └──────┬──────┘
+        │                │                     │
+        └────────┬───────┴─────────────────────┘
+                 │
+     ┌───────────┼───────────┬───────────┐
+     │           │           │           │
+┌────▼─────┐ ┌──▼───┐  ┌────▼────┐  ┌──▼─────┐
+│ Service  │ │Webhook│ │ Prompt  │  │ Token  │
+│  Schema  │ │ Gen.  │ │Injector │  │Counter │
+│  Engine  │ └───────┘ └─────────┘  └────────┘
+└──────────┘
 ```
+
+### Key Benefits
+
+✅ **Clear Separation**: Each module has a single, well-defined responsibility  
+✅ **Easy Maintenance**: Smaller, focused codebases per module  
+✅ **Simple Extension**: Add new modules without modifying existing code  
+✅ **Reduced Coupling**: Modules communicate through defined contracts  
+✅ **Independent Testing**: Test modules in isolation
 
 ## Configuration
 
@@ -203,6 +190,143 @@ The system uses a **four-phase configuration approach** for maximum flexibility:
 | **Infrastructure**    | `transfer_phone_number`, `webhooks.tools.*`                    | Technical endpoints and phone routing |
 | **Voice Settings**    | `voice_id`, `max_call_duration_ms`, `interruption_sensitivity` | Call behavior and voice configuration |
 | **Runtime Data**      | Custom fields in `runtime_variables`                           | Dynamic content in conversations      |
+
+## Core Modules
+
+The modular architecture consists of 9 independent modules:
+
+### 1. ConfigurationLoader (`lib/ConfigurationLoader.js`)
+
+**Responsibility**: Load, validate, and process `config.json`
+
+**Key Methods**:
+- `loadConfiguration()`: Load and parse configuration file
+- `processEnvironmentVariables()`: Resolve `env:` references to actual values
+- `validateConfiguration()`: Ensure required fields exist and are valid
+
+### 2. RuntimeVariableBuilder (`lib/RuntimeVariableBuilder.js`)
+
+**Responsibility**: Build all four phases of template variables
+
+**Key Methods**:
+- `buildAllPhases()`: Generate all variable sets in correct order
+- `buildTemplateVariables()`: Phase 1 - Build-time metadata
+- `buildRuntimeVariables()`: Phase 3 - Retell dynamic variables
+
+### 3. ServiceSchemaEngine (`lib/ServiceSchemaEngine.js`)
+
+**Responsibility**: Generate JSON schemas for service-specific booking properties
+
+**Key Methods**:
+- `generateServicePropertiesSchema()`: Build dynamic property schemas
+- `buildAppointmentFunctionSchema()`: Generate complete booking schemas
+- `generateAppointmentCSVColumns()`: Create CSV headers with dynamic columns
+
+### 4. WebhookGenerator (`lib/WebhookGenerator.js`)
+
+**Responsibility**: Create unique webhook URLs with collision-resistant hashes
+
+**Key Methods**:
+- `generateWebhookHashes()`: Create SHA256-based hash identifiers
+- `buildWebhookUrls()`: Construct complete webhook URLs
+
+### 5. PromptInjector (`lib/PromptInjector.js`)
+
+**Responsibility**: Load and inject markdown prompts into configurations
+
+**Key Methods**:
+- `loadPrompts()`: Load processed prompt files from dist
+- `injectIntoRetellAgent()`: Update agent global_prompt
+- `injectIntoN8nWorkflow()`: Update workflow system messages
+
+### 6. RetellAgentProcessor (`lib/RetellAgentProcessor.js`)
+
+**Responsibility**: Process Retell agent JSON with multi-phase configuration
+
+**Key Methods**:
+- `processAgent()`: Main agent processing pipeline
+- `updateToolWebhooks()`: Update tool webhook URLs with hashes
+- `injectServiceSchemas()`: Add service-specific booking schemas
+
+### 7. N8nWorkflowProcessor (`lib/N8nWorkflowProcessor.js`)
+
+**Responsibility**: Process n8n workflow JSON files
+
+**Key Methods**:
+- `processWorkflow()`: Main workflow processing pipeline
+- `injectServiceConfiguration()`: Add service type mappings
+- `updateWebhookNodes()`: Update webhook paths with hashes
+
+### 8. TemplateProcessor (`lib/TemplateProcessor.js`)
+
+**Responsibility**: Orchestrate file-type routing and content processing
+
+**Key Methods**:
+- `processFile()`: Route files to appropriate processors
+- `shouldPreserveVariables()`: Check if variables should remain for runtime
+
+### 9. TokenCounter (`lib/TokenCounter.js`)
+
+**Responsibility**: Analyze token usage and estimate costs
+
+**Key Methods**:
+- `countRetellAgent()`: Analyze agent configuration tokens
+- `generateReport()`: Create comprehensive cost analysis
+
+## Extension Points
+
+### Adding a New Module
+
+The modular architecture makes it easy to extend the build system with new functionality:
+
+1. **Create module file**: Add `lib/YourModule.js` with your module class
+2. **Implement functionality**: Focus on single responsibility with clear public methods
+3. **Export module**: Add to `lib/index.js` exports
+4. **Integrate**: Instantiate and use in `build.js` build process
+
+Each module should:
+- Have a single, clear responsibility
+- Use the constructor for configuration/dependency injection
+- Expose public methods for core functionality
+- Follow the existing module patterns (see ConfigurationLoader or TokenCounter as examples)
+
+## API Reference
+
+### Module Methods Overview
+
+**ConfigurationLoader**
+- `loadConfiguration()` - Load and parse config.json with environment variable resolution
+- `validateConfiguration()` - Ensure required fields exist and are valid
+
+**RuntimeVariableBuilder**
+- `buildAllPhases(config, packageJson, repoName)` - Generate all four configuration phases
+
+**ServiceSchemaEngine**
+- `initialize(services, constraints)` - Set up service definitions and validation rules
+- `buildAppointmentFunctionSchema()` - Generate complete JSON schema for booking tools
+
+**WebhookGenerator**
+- `initialize(webhookConfig)` - Configure webhook base URL and settings
+- `buildWebhookUrls()` - Generate unique hash-based webhook endpoints
+
+**PromptInjector**
+- `initialize(businessName, distDir)` - Set up prompt loading context
+- `loadPrompts()` - Load all processed prompts from dist directory
+- `getCorePrompt()`, `getRagPrompt()` - Retrieve specific prompt content
+
+**RetellAgentProcessor**
+- `processAgent(agentJson, context)` - Inject prompts, service schemas, and runtime variables
+
+**N8nWorkflowProcessor**
+- `processWorkflow(workflowJson, workflowName, context)` - Apply service mappings and templates
+
+**TemplateProcessor**
+- `processFile(content, filePath, context)` - Apply template variable substitution
+
+**TokenCounter**
+- `countRetellAgent(agentConfig)` - Analyze agent token usage
+- `countKnowledgeBase(content, name)` - Track knowledge base tokens
+- `generateReport()` - Create comprehensive cost analysis with per-conversation estimates
 
 ## Action Schemas & Integration
 
@@ -453,8 +577,20 @@ Use `/n8n-workflow Create review request system` to build a workflow that:
 
 ```
 ├── config.json              # Client configuration & template variables
-├── build.js                 # Smart templating engine with prompt injection
+├── build.js                 # Build orchestrator (uses modular lib/)
+├── .env.template            # Environment variable template for deployment
 ├── CONFIG.md                # Detailed configuration documentation
+├── lib/                     # Modular build system components
+│   ├── index.js             # Module exports
+│   ├── ConfigurationLoader.js
+│   ├── RuntimeVariableBuilder.js
+│   ├── ServiceSchemaEngine.js
+│   ├── WebhookGenerator.js
+│   ├── PromptInjector.js
+│   ├── RetellAgentProcessor.js
+│   ├── N8nWorkflowProcessor.js
+│   ├── TemplateProcessor.js
+│   └── TokenCounter.js
 ├── src/                     # Source templates (edit these)
 │   ├── {{agent_name}} - Retell Agent.json  # Main agent configuration
 │   ├── prompts/             # Business-specific prompts (templated)
@@ -468,22 +604,23 @@ Use `/n8n-workflow Create review request system` to build a workflow that:
 │   │   ├── {{business_name}} Leads.csv
 │   │   └── {{business_name}} Service Types.csv
 │   ├── tests/               # Test scenarios with business context
-│   └── n8n/                # n8n workflow templates
+│   └── workflows/           # n8n workflow templates
 │       ├── answerQuestion.json
 │       ├── bookAppointment.json
 │       ├── cancelAppointment.json
 │       ├── identifyAppointment.json
 │       ├── logLead.json
 │       ├── modifyAppointment.json
-│       └── timeAndDay.json
+│       └── dayAndTime.json
 └── dist/                    # Generated client files (deploy these)
     ├── [Agent Name] - Retell Agent.json  # Ready for Retell.ai import
     ├── prompts/             # Processed prompts with injected content
     ├── knowledge-base/      # Client-specific knowledge base
     ├── sheets/              # Business-specific CSV files
     ├── tests/               # Templated test scenarios
-    ├── n8n/                # Workflows with templated webhooks
-    └── build-info.json     # Build statistics and optimization metrics
+    ├── workflows/           # Workflows with templated webhooks
+    ├── build-info.json      # Build statistics and optimization metrics
+    └── token-report.json    # Token usage analysis and cost estimates
 ```
 
 ## Development

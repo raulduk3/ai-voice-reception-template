@@ -9,10 +9,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -500,
-        -20
-      ],
+      "position": [-500, -20],
       "id": "ab986afe-7227-48b6-af07-2cc9b80ecd1d",
       "name": "Webhook",
       "webhookId": "54f54781-9ecb-4a13-9bc7-26454761b588"
@@ -25,10 +22,7 @@
       "name": "Validate & Extract Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -280,
-        -20
-      ]
+      "position": [-280, -20]
     },
     {
       "parameters": {
@@ -63,10 +57,7 @@
       },
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
-      "position": [
-        -60,
-        160
-      ],
+      "position": [-60, 160],
       "id": "6149afdb-b976-419d-829c-877bbaa4f3c2",
       "name": "Get Appointments from Sheet",
       "alwaysOutputData": true,
@@ -87,23 +78,17 @@
       "name": "Format Matched Appointments",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        380,
-        -250
-      ]
+      "position": [380, -250]
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\n// Pass through failure status\nif (data.status === 'failure') return [{ json: data }];\n\nconst apts = data.appointments;\nconst count = apts.length;\n\n// Format message based on number of matches\nlet message;\nif (count === 1) {\n  message = `Found 1 appointment for ${apts[0].Name} on ${apts[0].Date} at ${apts[0].Time}.`;\n} else {\n  message = `Found ${count} appointments matching your search.`;\n}\n\n// Service property column mapping (column names -> property keys)\nconst servicePropertyColumns = {\n  'Consultation: Project Type': { service: 'consultation', property: 'project_type' },\n  'Consultation: Budget Range': { service: 'consultation', property: 'budget_range' },\n  'Consultation: Timeline Weeks': { service: 'consultation', property: 'timeline_weeks' },\n  'Follow-Up: Previous Project': { service: 'follow-up', property: 'previous_project' },\n  'Bathroom Remodeling Consultation: Location': { service: 'bathroom-remodeling-consultation', property: 'location' },\n  'Bathroom Remodeling Consultation: Budget': { service: 'bathroom-remodeling-consultation', property: 'budget' },\n  'Bathroom Remodeling Consultation: Budget Grade': { service: 'bathroom-remodeling-consultation', property: 'budget_grade' },\n  'Bathroom Remodeling Consultation: Bathroom Size Sqft': { service: 'bathroom-remodeling-consultation', property: 'bathroom_size_sqft' },\n  'Bathroom Remodeling Consultation: Timeline Preference': { service: 'bathroom-remodeling-consultation', property: 'timeline_preference' }\n};\n\n// Helper function to extract service properties from appointment CSV data\nfunction extractServiceProperties(apt) {\n  const serviceSlug = apt.Service ? apt.Service.toLowerCase().replaceAll(' ', '-') : null;\n  const serviceProperties = {};\n  \n  // Extract service-specific properties from CSV columns\n  Object.keys(servicePropertyColumns).forEach(columnName => {\n    const columnConfig = servicePropertyColumns[columnName];\n    if (columnConfig.service === serviceSlug && apt[columnName]) {\n      serviceProperties[columnConfig.property] = apt[columnName];\n    }\n  });\n  \n  return serviceProperties;\n}\n\n// Format appointments array for response with enhanced service data\nconst formattedAppointments = apts.map(apt => {\n  const serviceProperties = extractServiceProperties(apt);\n  const serviceSlug = apt.Service ? apt.Service.toLowerCase().replaceAll(' ', '-') : null;\n  \n  return {\n    appointment_id: apt['Google Calendar Event ID'] || '',\n    name: apt.Name,\n    date: apt.Date,\n    time: apt.Time,\n    phone: apt.Phone,\n    email: apt.Email || '',\n    preferred_contact_method: apt['Preferred Contact Method'] || '',\n    service: apt.Service,\n    service_slug: serviceSlug,\n    service_properties: serviceProperties,\n    notes: apt.Notes || '',\n    timezone: apt.Timezone || '',\n    context_summary: `${apt.Service} appointment on ${apt.Date} at ${apt.Time}`\n  };\n});\n\nreturn [{\n  json: {\n    status: 'success',\n    message: message,\n    data: {\n      appointments: formattedAppointments,\n      total_matches: count\n    }\n  }\n}];"
+        "jsCode": "const data = $input.first().json;\n\n// Pass through failure status\nif (data.status === 'failure') return [{ json: data }];\n\nconst apts = data.appointments;\nconst count = apts.length;\n\n// Format message based on number of matches\nlet message;\nif (count === 1) {\n  message = `Found 1 appointment for ${apts[0].Name} on ${apts[0].Date} at ${apts[0].Time}.`;\n} else {\n  message = `Found ${count} appointments matching your search.`;\n}\n\n// Service property column mapping (column names -> property keys)\nconst servicePropertyColumns = {{REVERSE_COLUMN_MAPPING}};\n\n// Helper function to extract service properties from appointment CSV data\nfunction extractServiceProperties(apt) {\n  const serviceSlug = apt.Service ? apt.Service.toLowerCase().replaceAll(' ', '-') : null;\n  const serviceProperties = {};\n  \n  // Extract service-specific properties from CSV columns\n  Object.keys(servicePropertyColumns).forEach(columnName => {\n    const columnConfig = servicePropertyColumns[columnName];\n    if (columnConfig.service === serviceSlug && apt[columnName]) {\n      serviceProperties[columnConfig.property] = apt[columnName];\n    }\n  });\n  \n  return serviceProperties;\n}\n\n// Format appointments array for response with enhanced service data\nconst formattedAppointments = apts.map(apt => {\n  const serviceProperties = extractServiceProperties(apt);\n  const serviceSlug = apt.Service ? apt.Service.toLowerCase().replaceAll(' ', '-') : null;\n  \n  return {\n    appointment_id: apt['Google Calendar Event ID'] || '',\n    name: apt.Name,\n    date: apt.Date,\n    time: apt.Time,\n    phone: apt.Phone,\n    email: apt.Email || '',\n    preferred_contact_method: apt['Preferred Contact Method'] || '',\n    service: apt.Service,\n    service_slug: serviceSlug,\n    service_properties: serviceProperties,\n    notes: apt.Notes || '',\n    timezone: apt.Timezone || '',\n    context_summary: `${apt.Service} appointment on ${apt.Date} at ${apt.Time}`\n  };\n});\n\nreturn [{\n  json: {\n    status: 'success',\n    message: message,\n    data: {\n      appointments: formattedAppointments,\n      total_matches: count\n    }\n  }\n}];"
       },
       "id": "bb6d1aa3-0cd8-43cc-9dd6-59d1247c23f0",
       "name": "Format Success Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        600,
-        -300
-      ]
+      "position": [600, -300]
     },
     {
       "parameters": {
@@ -113,10 +98,7 @@
       "name": "Handle Validation Failure",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        600,
-        -75
-      ]
+      "position": [600, -75]
     },
     {
       "parameters": {
@@ -126,10 +108,7 @@
       "name": "Handle System Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        600,
-        200
-      ]
+      "position": [600, 200]
     },
     {
       "parameters": {
@@ -139,10 +118,7 @@
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        820,
-        -75
-      ]
+      "position": [820, -75]
     },
     {
       "parameters": {},
@@ -150,10 +126,7 @@
       "name": "Merge Search Data with Appointments",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [
-        160,
-        -240
-      ]
+      "position": [160, -240]
     }
   ],
   "connections": {
