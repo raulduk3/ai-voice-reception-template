@@ -40,7 +40,8 @@ TEMPLATE PROCESSING TARGETS:
 1. Replace `[EXTENSION REQUEST]` with your specific functionality addition
 2. Consider which configuration files need templating
 3. Plan backward compatibility for existing client deployments
-4. Include proper documentation updates in your request, opt to add to existing README before creating a new
+4. Include proper documentation updates in your request, opt to add to existing README before
+   creating a new
 
 ## Extension Patterns
 

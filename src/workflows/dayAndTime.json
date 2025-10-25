@@ -8,10 +8,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        -280,
-        -20
-      ],
+      "position": [-280, -20],
       "id": "8e09c338-99b6-4527-b290-0eaa33176458",
       "name": "Webhook",
       "webhookId": "46d36bed-b753-453e-b44f-7011e7b98041"
@@ -24,10 +21,7 @@
       },
       "type": "n8n-nodes-base.dateTime",
       "typeVersion": 2,
-      "position": [
-        160,
-        -20
-      ],
+      "position": [160, -20],
       "id": "0b69e2ed-281b-4108-936f-195aa31f410d",
       "name": "Date & Time"
     },
@@ -37,10 +31,7 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.3,
-      "position": [
-        600,
-        -20
-      ],
+      "position": [600, -20],
       "id": "cc2affe5-efe7-4b56-abc4-268eb896871c",
       "name": "Respond to Webhook"
     },
@@ -50,10 +41,7 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        380,
-        -20
-      ],
+      "position": [380, -20],
       "id": "79ab596c-0279-4947-b710-89843b85ecf0",
       "name": "Format Success"
     },
@@ -73,10 +61,7 @@
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [
-        -60,
-        -20
-      ],
+      "position": [-60, -20],
       "id": "f0f5066f-bdf9-4ab1-bea2-4c6ac3767991",
       "name": "Validate & Extract Data"
     }

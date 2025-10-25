@@ -49,6 +49,27 @@ jobs:
           cat dist/build-info.json >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
+      - name: Display token usage
+        run: |
+          if [ -f dist/token-usage-report.json ]; then
+            echo "## 🎯 Token Usage Analysis" >> $GITHUB_STEP_SUMMARY
+            TOTAL_TOKENS=$(cat dist/token-usage-report.json | jq -r '.summary.total_tokens')
+            COST_PER_1K=$(cat dist/token-usage-report.json | jq -r '.cost_estimates.estimated_cost_per_1000_conversations')
+            NODES=$(cat dist/token-usage-report.json | jq -r '.statistics.total_nodes')
+            TOOLS=$(cat dist/token-usage-report.json | jq -r '.statistics.total_tools')
+            echo "- **Total Tokens**: $(printf "%'d" $TOTAL_TOKENS)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Conversation Nodes**: $NODES" >> $GITHUB_STEP_SUMMARY
+            echo "- **Tools Configured**: $TOOLS" >> $GITHUB_STEP_SUMMARY
+            echo "- **Est. Cost per 1K Conversations**: \$$COST_PER_1K" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "<details><summary>View Detailed Token Breakdown</summary>" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            cat dist/token-usage-report.json >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "</details>" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -91,6 +112,20 @@ jobs:
           echo "build_time=$BUILD_TIME" >> $GITHUB_OUTPUT
           echo "build_date=$BUILD_DATE" >> $GITHUB_OUTPUT
 
+          # Extract token usage if available
+          if [ -f dist/token-usage-report.json ]; then
+            TOKEN_REPORT=$(cat dist/token-usage-report.json)
+            TOTAL_TOKENS=$(echo $TOKEN_REPORT | jq -r '.summary.total_tokens')
+            COST_PER_1K=$(echo $TOKEN_REPORT | jq -r '.cost_estimates.estimated_cost_per_1000_conversations')
+            TOTAL_NODES=$(echo $TOKEN_REPORT | jq -r '.statistics.total_nodes')
+            TOTAL_TOOLS=$(echo $TOKEN_REPORT | jq -r '.statistics.total_tools')
+            
+            echo "total_tokens=$TOTAL_TOKENS" >> $GITHUB_OUTPUT
+            echo "cost_per_1k=$COST_PER_1K" >> $GITHUB_OUTPUT
+            echo "total_nodes=$TOTAL_NODES" >> $GITHUB_OUTPUT
+            echo "total_tools=$TOTAL_TOOLS" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create or Update GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
@@ -100,17 +135,41 @@ jobs:
           body: |
             # ${{ env.REPO_NAME }} v${{ steps.version.outputs.package_version }}
 
-            **Build Information:**
+            ## 🏗️ Build Information
             - 📁 **Files Processed**: ${{ steps.build_info.outputs.total_files }}
             - 📦 **Size Reduction**: ${{ steps.build_info.outputs.size_reduction }} (${{ steps.build_info.outputs.original_size }} → ${{ steps.build_info.outputs.processed_size }})
             - ⚡ **Build Time**: ${{ steps.build_info.outputs.build_time }}
             - 📅 **Build Date**: ${{ steps.build_info.outputs.build_date }}
             - 🔗 **Commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+
+            ## 🎯 Token Usage Analysis
+            - 🔢 **Total Tokens**: ${{ steps.build_info.outputs.total_tokens }}
+            - 💬 **Conversation Nodes**: ${{ steps.build_info.outputs.total_nodes }}
+            - 🛠️ **Tools Configured**: ${{ steps.build_info.outputs.total_tools }}
+            - 💰 **Est. Cost per 1K Calls**: \$${{ steps.build_info.outputs.cost_per_1k }}
+
+            ## 📦 What's Included
+            - Optimized Retell AI agent configuration
+            - n8n workflow templates
+            - Knowledge base content
+            - Service-specific schemas
+            - Complete build metadata
+
+            ## 🏛️ Architecture
+            Built with modular architecture:
+            - ConfigurationLoader
+            - ServiceSchemaEngine  
+            - WebhookGenerator
+            - PromptInjector
+            - RuntimeVariableBuilder
+            - TokenCounter
+            - RetellAgentProcessor
+            - N8nWorkflowProcessor
+            - TemplateProcessor
           files: |
             ${{ env.REPO_NAME }}-optimized.tar.gz
           draft: false
           prerelease: false
-          make_latest: true
           generate_release_notes: false
 
       - name: Build Status Summary
