@@ -47,7 +47,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "The caller has already stated their request from the welcome. Acknowledge what they said and route them immediately based on their intent. Only speak if you need to clarify something ambiguous—otherwise, let the edges route silently to the appropriate next node.\n\nCurrent date/time: {{dayAndTime}}"
+          "text": "Route caller based on their stated intent. Acknowledge briefly only if clarification is needed.\n\nCurrent date/time: {{dayAndTime}}"
         },
         "name": "Router",
         "edges": [
@@ -56,7 +56,15 @@
             "id": "edge-1759306500001",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller asks about THEIR OWN specific appointment (e.g., 'when is my appointment', 'what time is my booking', 'can you check my appointment'). Route to identification first."
+              "prompt": "Caller asks about their specific appointment."
+            }
+          },
+          {
+            "destination_node_id": "node-1759288307521",
+            "id": "edge-1760010100000",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "Caller asks about availability or openings for scheduling."
             }
           },
           {
@@ -64,7 +72,7 @@
             "id": "edge-1759286128401",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller asks general business questions about services, hours, policies, or procedures (NOT about their specific appointment)."
+              "prompt": "Caller asks general business questions about services, hours, location, or policies."
             }
           },
           {
@@ -112,7 +120,7 @@
             "id": "edge-1759286171992",
             "transition_condition": {
               "type": "prompt",
-              "prompt": "Caller's intent is unclear or does not match defined categories."
+              "prompt": "Caller's intent is unclear."
             }
           }
         ],
@@ -131,7 +139,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Answer the caller's question about the business. For simple questions like hours, location, services, or policies, answer directly using what you know—keep it to 1-2 sentences. For availability questions (e.g., 'when are you available', 'do you have openings on Friday'), use the Answer Question tool to check real-time availability. If the question is complex or you need additional information, use the Answer Question tool. After answering, ask if there's anything else you can help with."
+          "text": "Answer simple questions directly. Use Answer Question function for complex queries or real-time data needs. After answering, ask if there's anything else."
         },
         "name": "Answer Question",
         "edges": [
@@ -179,7 +187,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Let the caller know you'd be happy to have someone call them back during business hours ({{business_hours}}). Collect their information one piece at a time: name, phone number, email address, and what they need help with. Acknowledge each response naturally. Once you have everything, log the lead."
+          "text": "Offer callback during business hours. Collect name, phone number, email address, and their need. Acknowledge each response. Once complete, log the lead."
         },
         "name": "Log Lead",
         "edges": [
@@ -270,7 +278,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Help the caller schedule their appointment. Ask for one piece of information at a time: their name, phone number, email, what service they need, and when they'd like to come in. Acknowledge each answer naturally before moving on. If the service requires additional details, collect those too. Once you have everything, summarize it all back to them and make sure they confirm it's correct before booking.\n\nCurrent date/time: {{dayAndTime}}\nTimezone: {{timezone}}"
+          "text": "Collect appointment details one at a time: name, phone, email, service, date, and time. If service requires additional details, collect those too. Summarize and confirm before booking.\n\nCurrent date/time: {{dayAndTime}}\nTimezone: {{timezone}}"
         },
         "name": "Gather New Appointment Details",
         "edges": [
@@ -368,7 +376,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Something went wrong with the booking. Explain what the issue is based on the error message, and help the caller fix it. Stay positive and be specific about what needs to change. If a time isn't available, suggest an alternative. If information is in the wrong format, ask for it again. Only ask for the fields that need correction."
+          "text": "Explain the issue based on error message. Help caller fix it by asking only for fields needing correction. Stay positive and be specific."
         },
         "name": "Re-Verify Appointment Details",
         "edges": [
@@ -447,7 +455,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Confirm what you just completed for the caller. If you booked an appointment, tell them when it is and that they'll get a confirmation. If you modified or cancelled one, confirm the change. If you logged a callback request, let them know someone will reach out during business hours. Then ask if there's anything else you can help with today."
+          "text": "Confirm what was completed. Ask if there's anything else."
         },
         "name": "End Call Confirmation",
         "edges": [
@@ -518,7 +526,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "You don't have the information they're looking for. Apologize briefly and offer helpful alternatives: arrange a callback from someone more knowledgeable, transfer them to a person if available, or help them with something else. Keep it solution-oriented and don't over-explain."
+          "text": "Apologize briefly. Offer alternatives: callback, transfer, or help with something else. Stay solution-oriented."
         },
         "name": "Q/A Fail",
         "edges": [
@@ -558,7 +566,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Help the caller find their existing appointment. Ask for their phone number or the name the appointment is under—whatever they prefer. Once you have it, look it up using the identifyAppointment function. Keep your responses brief and acknowledge what they tell you.\n\nCurrent date/time: {{dayAndTime}}\nTimezone: {{timezone}}"
+          "text": "Ask for phone number or name. Look up using identifyAppointment function.\n\nCurrent date/time: {{dayAndTime}}\nTimezone: {{timezone}}"
         },
         "name": "Identify Appointment",
         "edges": [
@@ -637,7 +645,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Share the appointment details you found with the caller and confirm it's the right one. Then ask what they'd like to do with it. Listen for whether they want to ask questions about it, change it, or cancel it, and help them accordingly."
+          "text": "Share appointment details and confirm correct. Ask what they'd like to do with it."
         },
         "name": "Operate on Existing Appointment",
         "edges": [
@@ -685,7 +693,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Find out what the caller wants to change about their appointment. They might want to change the date, time, service, or contact information. Only collect the fields they want to change—don't ask about things they're keeping the same. Confirm each change back to them before proceeding.\n\nCurrent: {{dayAndTime}}\nTimezone: {{timezone}}"
+          "text": "Ask what to change. Only collect fields being modified. Confirm each change.\n\nCurrent: {{dayAndTime}}\nTimezone: {{timezone}}"
         },
         "name": "Gather Modification Details",
         "edges": [
@@ -795,7 +803,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "Greet the caller warmly: \"Hello, thank you for calling {{business_name}}. This is {{agent_name}}. How can I help you today?\" Listen carefully to their complete response without interrupting. Be warm, professional, and genuinely interested in helping them.\n\n{{agent_name}}\n{{business_name}}"
+          "text": "Greet caller: \"Hello, thank you for calling {{business_name}}. This is {{agent_name}}. How can I help you today?\" Listen to their complete response.\n\n{{agent_name}}\n{{business_name}}"
         },
         "name": "Welcome",
         "edges": [
@@ -827,7 +835,7 @@
       {
         "instruction": {
           "type": "prompt",
-          "text": "End the call warmly: \"Thank you for calling {{business_name}}. Have a wonderful day!\" Keep it brief and genuine. Match the time of day naturally if you'd like.\n\n{{business_name}}"
+          "text": "End call: \"Thank you for calling {{business_name}}. Have a wonderful day!\"\n\n{{business_name}}"
         },
         "name": "Graceful Goodbye",
         "edges": [

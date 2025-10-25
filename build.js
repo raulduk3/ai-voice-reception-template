@@ -1180,8 +1180,6 @@ class AIVoiceBuilder {
           settings: workflowData.settings || {}
         };
 
-
-
         // Convert to JSON
         const jsonData = JSON.stringify(apiWorkflow);
         

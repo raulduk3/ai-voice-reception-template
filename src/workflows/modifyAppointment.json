@@ -96,7 +96,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Calculate booking duration and create timezone-aware datetime strings for Google Calendar API\nconst inputData = $input.first().json;\nconst booking = inputData.updates || inputData;\nconst timeProvided = inputData.time_provided;\n\n// Pass through failure status\nif (inputData.status === 'failure') {\n  return [{ json: inputData }];\n}\n\n// Normalize and validate time string\nconst rawTime = typeof booking.time === 'string' ? booking.time.trim() : '';\nconst hasValidTime = /^(?:[01]?\\d|2[0-3]):[0-5]\\d$/.test(rawTime);\n\n// Determine date source (may come later from Sheets).\n// If no valid date at this point, skip datetime calc and let later node compute using sheet data.\nconst dateCandidate = booking.date || inputData.date || '';\nconst hasValidDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(dateCandidate));\n\n// If time wasn't provided in this update OR it's invalid OR date is missing, skip calculations\n// Check if date is being modified in the updates\nconst dateProvided = booking.hasOwnProperty('date') && booking.date;\n\n// Only check availability if time OR date is being modified\n// If neither time nor date is being updated, skip availability check\nif (!timeProvided && !dateProvided) {\n  return [{\n    json: {\n      ...inputData,\n      // downstream nodes will compute start/end using sheet data in \"Format New Calendar Event\"\n      skip_availability_check: true\n    }\n  }];\n}\n\n// If time or date provided but invalid, skip calculations\nif ((timeProvided && !hasValidTime) || (dateProvided && !hasValidDate)) {\n  return [{\n    json: {\n      ...inputData,\n      // downstream nodes will compute start/end using sheet data in \"Format New Calendar Event\"\n      skip_availability_check: true\n    }\n  }];\n}\n\n// For availability checking, we need both valid time and date\n// If we're checking availability, ensure we have all required data\nif ((timeProvided || dateProvided) && (!hasValidTime || !hasValidDate)) {\n  return [{\n    json: {\n      ...inputData,\n      // downstream nodes will compute start/end using sheet data in \"Format New Calendar Event\"\n      skip_availability_check: true\n    }\n  }];\n}\n\n// Get duration from either merged service data or default\nconst durationMinutes = Number(inputData.duration) || 60; // Default 60 minutes if not available\nconst timezone = booking.timezone || inputData.timezone || 'America/Chicago'; // Default timezone if not provided\n\n// Parse start time components from the booking time string (HH:MM format)\nconst [startHours, startMinutes] = rawTime.split(':').map((v) => Number(v));\n\n// Calculate end time using pure arithmetic (avoids JavaScript Date timezone conversion)\n// This keeps calculations in the LOCAL timezone specified by the caller\nlet totalMinutes = startHours * 60 + startMinutes + durationMinutes;\nconst daysToAdd = Math.floor(totalMinutes / (24 * 60)); // Handle day overflow\nconst endHours = Math.floor(totalMinutes / 60) % 24;\nconst endMinutes = totalMinutes % 60;\n\n// Format end time\nconst endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;\n\n// Calculate end date (handle appointments that cross midnight)\nlet endDate = dateCandidate;\nif (daysToAdd > 0) {\n  const startDateObj = new Date(`${dateCandidate}T00:00:00`);\n  startDateObj.setDate(startDateObj.getDate() + daysToAdd);\n  endDate = startDateObj.toISOString().split('T')[0];\n}\n\n// Helper function to convert local datetime + timezone → RFC3339 format\nfunction toRFC3339(dateTimeString, timeZone) {\n  // Create a date object from the local datetime string\n  const localDateTime = new Date(dateTimeString);\n  if (isNaN(localDateTime.getTime())) {\n    throw new Error(`Invalid datetime string: ${dateTimeString}`);\n  }\n\n  // Use Intl.DateTimeFormat to get timezone offset for the specific date\n  const formatter = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false\n  });\n\n  const parts = formatter.formatToParts(localDateTime);\n  const getValue = (type) => parseInt(parts.find(p => p.type === type).value, 10);\n  \n  // Create a date in the target timezone\n  const targetDate = new Date(Date.UTC(\n    getValue('year'),\n    getValue('month') - 1,\n    getValue('day'),\n    getValue('hour'),\n    getValue('minute'),\n    getValue('second')\n  ));\n\n  // Calculate the offset in minutes\n  const offsetMinutes = (targetDate.getTime() - localDateTime.getTime()) / 60000;\n  const sign = offsetMinutes <= 0 ? '-' : '+';\n  const absOffset = Math.abs(offsetMinutes);\n  const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');\n  const offsetMins = String(absOffset % 60).padStart(2, '0');\n  const offset = `${sign}${offsetHours}:${offsetMins}`;\n\n  // Format the final RFC3339 string\n  const [date, time] = dateTimeString.split('T');\n  const timePart = time && time.split(':').length === 2 ? `${time}:00` : time;\n  return `${date}T${timePart}${offset}`;\n}\n\n// Create timezone-aware datetime strings in RFC3339 format for Google Calendar API\nconst startDatetimeString = `${dateCandidate}T${rawTime}:00`;\nconst endDatetimeString = `${endDate}T${endTime}:00`;\n\n// Convert to RFC3339 format with timezone offset\nconst startRFC3339 = toRFC3339(startDatetimeString, timezone);\nconst endRFC3339 = toRFC3339(endDatetimeString, timezone);\n\nreturn [{\n  json: {\n    ...inputData,\n    start_datetime: startRFC3339,\n    end_datetime: endRFC3339,\n    end_date: endDate,\n    end_time: endTime\n  }\n}];"
+        "jsCode": "// Calculate booking duration and create timezone-aware datetime strings for Google Calendar API\n// NOW runs AFTER fetching appointment data from sheet, so we have complete information\nconst inputData = $input.first().json;\nconst booking = inputData.updates || inputData;\nconst timeProvided = inputData.time_provided;\n\n// Pass through failure status\nif (inputData.status === 'failure') {\n  return [{ json: inputData }];\n}\n\n// Check if date is being modified in the updates\nconst dateProvided = booking.hasOwnProperty('date') && booking.date;\n\n// Only check availability if time OR date is being modified\nif (!timeProvided && !dateProvided) {\n  return [{\n    json: {\n      ...inputData,\n      skip_availability_check: true\n    }\n  }];\n}\n\n// Get time - from updates OR existing appointment data (sheet)\nconst rawTime = (typeof booking.time === 'string' ? booking.time.trim() : null) || inputData.Time || '';\nconst hasValidTime = /^(?:[01]?\\d|2[0-3]):[0-5]\\d$/.test(rawTime);\n\n// Get date - from updates OR existing appointment data (sheet)\nconst dateCandidate = booking.date || inputData.Date || '';\nconst hasValidDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(dateCandidate));\n\n// If we don't have valid time AND date, we can't check availability\nif (!hasValidTime || !hasValidDate) {\n  return [{\n    json: {\n      ...inputData,\n      skip_availability_check: true\n    }\n  }];\n}\n\n// Get duration from service data (already merged)\nconst durationMinutes = Number(inputData.duration) || 60;\nconst timezone = booking.timezone || inputData.Timezone || 'America/Chicago';\n\n// Parse start time\nconst [startHours, startMinutes] = rawTime.split(':').map((v) => Number(v));\n\n// Calculate end time\nlet totalMinutes = startHours * 60 + startMinutes + durationMinutes;\nconst daysToAdd = Math.floor(totalMinutes / (24 * 60));\nconst endHours = Math.floor(totalMinutes / 60) % 24;\nconst endMinutes = totalMinutes % 60;\nconst endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;\n\n// Calculate end date\nlet endDate = dateCandidate;\nif (daysToAdd > 0) {\n  const startDateObj = new Date(`${dateCandidate}T00:00:00`);\n  startDateObj.setDate(startDateObj.getDate() + daysToAdd);\n  endDate = startDateObj.toISOString().split('T')[0];\n}\n\n// Helper function for RFC3339 format\nfunction toRFC3339(dateTimeString, timeZone) {\n  const localDateTime = new Date(dateTimeString);\n  if (isNaN(localDateTime.getTime())) {\n    throw new Error(`Invalid datetime string: ${dateTimeString}`);\n  }\n\n  const formatter = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false\n  });\n\n  const parts = formatter.formatToParts(localDateTime);\n  const getValue = (type) => parseInt(parts.find(p => p.type === type).value, 10);\n  \n  const targetDate = new Date(Date.UTC(\n    getValue('year'),\n    getValue('month') - 1,\n    getValue('day'),\n    getValue('hour'),\n    getValue('minute'),\n    getValue('second')\n  ));\n\n  const offsetMinutes = (targetDate.getTime() - localDateTime.getTime()) / 60000;\n  const sign = offsetMinutes <= 0 ? '-' : '+';\n  const absOffset = Math.abs(offsetMinutes);\n  const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');\n  const offsetMins = String(absOffset % 60).padStart(2, '0');\n  const offset = `${sign}${offsetHours}:${offsetMins}`;\n\n  const [date, time] = dateTimeString.split('T');\n  const timePart = time && time.split(':').length === 2 ? `${time}:00` : time;\n  return `${date}T${timePart}${offset}`;\n}\n\n// Create RFC3339 datetime strings\nconst startDatetimeString = `${dateCandidate}T${rawTime}:00`;\nconst endDatetimeString = `${endDate}T${endTime}:00`;\n\nconst startRFC3339 = toRFC3339(startDatetimeString, timezone);\nconst endRFC3339 = toRFC3339(endDatetimeString, timezone);\n\nreturn [{\n  json: {\n    ...inputData,\n    start_datetime: startRFC3339,\n    end_datetime: endRFC3339,\n    end_date: endDate,\n    end_time: endTime\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -673,9 +673,14 @@
       "main": [
         [
           {
-            "node": "Calculate Booking Duration and Datetime",
+            "node": "Get Appointment Data From Sheet",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Merge Sheet Data with Booking",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
@@ -725,16 +730,6 @@
             "node": "Delete Old Event",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Get Appointment Data From Sheet",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Merge Sheet Data with Booking",
-            "type": "main",
-            "index": 1
           }
         ],
         [
@@ -761,7 +756,7 @@
       "main": [
         [
           {
-            "node": "Handle System Error1",
+            "node": "Format New Calendar Event",
             "type": "main",
             "index": 0
           }
@@ -788,7 +783,7 @@
       "main": [
         [
           {
-            "node": "Format New Calendar Event",
+            "node": "Calculate Booking Duration and Datetime",
             "type": "main",
             "index": 0
           }
